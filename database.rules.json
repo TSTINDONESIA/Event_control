@@ -94,6 +94,22 @@
         ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
         ".validate": "newData.hasChildren(['nama'])"
       }
+    },
+    "bulk": {
+      ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
+      "$id": {
+        ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true)||((root.child('users/'+auth.uid+'/role').val()==='warehouse'&&root.child('users/'+auth.uid+'/aktif').val()===true)&&newData.exists())",
+        ".validate": "newData.hasChildren(['nama','total'])&&newData.child('total').isNumber()&&newData.child('total').val()>=0"
+      }
+    },
+    "bulkEvent": {
+      ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
+      "$eid": {
+        "$bid": {
+          ".write": "((root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true)||(root.child('users/'+auth.uid+'/role').val()==='warehouse'&&root.child('users/'+auth.uid+'/aktif').val()===true))||(root.child('users/'+auth.uid+'/aktif').val()===true&&root.child('events/'+$eid+'/teknisi/'+auth.uid).exists()&&((data.child('tahap').val()==='keluar'&&newData.child('tahap').val()==='diterima')||(data.child('tahap').val()==='diterima'&&newData.child('tahap').val()==='kembali')))",
+          ".validate": "newData.hasChildren(['qty','mulai','selesai','tahap'])&&newData.child('qty').isNumber()&&newData.child('qty').val()>0&&newData.child('tahap').val().matches(/^(rencana|keluar|diterima|kembali|selesai)$/)"
+        }
+      }
     }
   }
 }

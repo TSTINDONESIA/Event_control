@@ -51,6 +51,8 @@ Jalankan lokal: `npm install` lalu `npm run dev`. Kamera HP butuh HTTPS (GitHub 
 
 ## Serah terima per event (Okt 2026)
 
+Barang jumlah (kabel, konektor, dll): menu Lainnya → Barang jumlah, jumlah per event di halaman event; selisih saat terima/kembali muncul di Dashboard (node `bulk`, `bulkEvent`).
+
 Gudang: *Siapkan semua* dan *Keluarkan semua* di halaman event, lalu *Surat Jalan (PDF)* dibagikan lewat WhatsApp. Teknisi: *Terima semua* (centang pengecualian) dan *Kembalikan semua*. Gudang tetap scan per unit saat terima kembali. Unit pengecualian muncul sebagai *Selisih serah terima* di Dashboard. **Publish ulang aturan database** (ada node baru `serahTerima`).
 
 ---

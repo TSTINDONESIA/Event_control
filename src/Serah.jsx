@@ -2,14 +2,16 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from './AuthContext.jsx';
 import { useVal, list, fmt } from './util.js';
-import { siapkanSemua, keluarkanSemua, terimaSemua, kembalikanSemua } from './flow.js';
+import { siapkanSemua, keluarkanSemua, terimaSemua, kembalikanSemua, bulkTerimaGudang, bulkList } from './flow.js';
 import { Badge } from './components.jsx';
 
-// Panel serah terima per event: gudang (Siapkan/Keluarkan semua) dan teknisi (Terima/Kembalikan semua)
+// Panel serah terima per event: gudang (Siapkan/Keluarkan semua) dan teknisi (Terima semua / Kembalikan semua)
 export default function Serah({ ev, units }) {
   const { profile } = useAuth();
   const catatan = useVal('serahTerima/' + ev.id);
-  const [exc, setExc] = useState({});   // { assetId: alasan }
+  const bE = useVal('bulkEvent/' + ev.id);
+  const [exc, setExc] = useState({});   // unit pengecualian { assetId: alasan }
+  const [bq, setBq] = useState({});     // jumlah barang jumlah { bid: angka }
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [ok, setOk] = useState('');
@@ -23,41 +25,47 @@ export default function Serah({ ev, units }) {
   const sent = by('keluar');
   const using = by('diterima', 'digunakan');
   const back = by('menunggu_kembali');
+  const bl = bulkList(bE);
+  const bPlan = bl.filter((e) => e.tahap === 'rencana');
+  const bSent = bl.filter((e) => e.tahap === 'keluar');
+  const bUse = bl.filter((e) => e.tahap === 'diterima');
+  const bBack = bl.filter((e) => e.tahap === 'kembali');
   const rec = list(catatan).sort((a, b) => b.waktu - a.waktu);
   const lastOut = rec.find((r) => r.tipe === 'keluar');
+  const nTerima = sent.length - Object.keys(exc).length + bSent.length;
 
   async function run(fn, done) {
     setBusy(true); setMsg(''); setOk('');
     try {
       const r = await fn();
       if (r?.gagal?.length) setMsg('Sebagian gagal: ' + r.gagal.join(' | '));
-      if (r?.ok?.length || !r) setOk(done(r));
+      if (r?.ok?.length || r?.bulk) setOk(done(r));
     } catch (e) { setMsg(e.message); }
     setBusy(false);
   }
+  const txt = (r, a) => `${r.ok.length} unit${r.bulk ? ` dan ${r.bulk} jenis barang jumlah` : ''} ${a}`;
 
   const doPrep = () => {
     if (!confirm(`Siapkan ${prepable.length} unit untuk event ini?\n\nPastikan semua barang sudah Anda ambil dan cek secara fisik.`)) return;
     run(() => siapkanSemua(prepable, ev, profile), (r) => `${r.ok.length} unit disiapkan.`);
   };
   const doOut = () => {
-    const sisa = units.filter((u) => u.eventId !== ev.id || u.status !== 'disiapkan').length;
-    const extra = sisa ? `\n\nCatatan: ${sisa} unit lain belum berstatus “Disiapkan” dan tidak ikut dikeluarkan.` : '';
-    if (!confirm(`Keluarkan ${prepared.length} unit dari gudang?${extra}`)) return;
-    run(() => keluarkanSemua(prepared, ev, profile), (r) => `${r.ok.length} unit dikeluarkan. Surat Jalan siap dibagikan.`);
+    if (!confirm(`Keluarkan ${prepared.length} unit dan ${bPlan.length} jenis barang jumlah dari gudang?`)) return;
+    run(() => keluarkanSemua(prepared, ev, profile, bPlan), (r) => txt(r, 'dikeluarkan. Surat Jalan siap dibagikan.'));
   };
   const doIn = () => {
-    const n = sent.length - Object.keys(exc).length;
-    if (!confirm(`Terima ${n} unit?\n\nPastikan Anda sudah mengecek barang secara fisik. Unit yang dicentang kurang/rusak TIDAK ikut diterima dan dicatat sebagai selisih.`)) return;
-    run(() => terimaSemua(sent, ev, profile, exc), (r) => `${r.ok.length} unit diterima. Status otomatis “Sedang digunakan”.`).then(() => setExc({}));
+    if (!confirm(`Terima barang?\n\nPastikan Anda sudah mengecek barang secara fisik. Unit yang dicentang dan jumlah yang kurang akan dicatat sebagai selisih.`)) return;
+    run(() => terimaSemua(sent, ev, profile, exc, bSent, bq), (r) => txt(r, 'diterima. Status otomatis “Sedang digunakan”.')).then(() => { setExc({}); setBq({}); });
   };
   const doBack = () => {
-    if (!confirm(`Kembalikan ${using.length} unit ke gudang? Gunakan ini hanya setelah event selesai.`)) return;
-    run(() => kembalikanSemua(using, ev, profile), (r) => `${r.ok.length} unit dikembalikan. Menunggu dicek gudang.`);
+    if (!confirm(`Kembalikan ${using.length} unit dan ${bUse.length} jenis barang jumlah ke gudang? Gunakan ini hanya setelah event selesai.`)) return;
+    run(() => kembalikanSemua(using, ev, profile, bUse), (r) => txt(r, 'dikembalikan. Menunggu dicek gudang.'));
   };
+  const doGudang = () => run(() => bulkTerimaGudang(bBack, ev, profile, bq), (r) => `${r.bulk} jenis barang jumlah selesai dihitung gudang.`).then(() => setBq({}));
   const toggle = (id, on) => setExc((p) => { const n = { ...p }; if (on) n[id] = ''; else delete n[id]; return n; });
+  const qv = (e, def) => (bq[e.bid] ?? def);
 
-  if (!mine.length && !prepable.length) return null;
+  if (!mine.length && !prepable.length && !bl.length) return null;
 
   return (
     <>
@@ -65,9 +73,9 @@ export default function Serah({ ev, units }) {
       <div className="card flag">
         <div className="row">
           <span><b>{prepared.length}</b> disiapkan</span>
-          <span><b>{sent.length}</b> sudah keluar</span>
-          <span><b>{using.length}</b> dipakai</span>
-          <span><b>{back.length}</b> menunggu dicek gudang</span>
+          <span><b>{sent.length + bSent.length}</b> sudah keluar</span>
+          <span><b>{using.length + bUse.length}</b> dipakai</span>
+          <span><b>{back.length + bBack.length}</b> menunggu dicek gudang</span>
           <span className="sp" />
           {lastOut && <Link className="btn dark" to={'/surat-jalan/' + ev.id}>Surat Jalan (PDF)</Link>}
         </div>
@@ -78,15 +86,15 @@ export default function Serah({ ev, units }) {
         {staff && (
           <div className="row" style={{ marginTop: 12 }}>
             <button disabled={busy || !prepable.length} onClick={doPrep}>Siapkan semua ({prepable.length})</button>
-            <button disabled={busy || !prepared.length} onClick={doOut}>Keluarkan semua ({prepared.length})</button>
+            <button disabled={busy || (!prepared.length && !bPlan.length)} onClick={doOut}>Keluarkan semua ({prepared.length + bPlan.length})</button>
           </div>
         )}
-        {staff && <small>Untuk pemeriksaan teliti, scan unit satu per satu di menu Scan QR. Tombol massal ini mempercepat bila semua sudah dicek.</small>}
+        {staff && <small>Barang per unit bisa di-scan satu per satu di menu Scan QR untuk pemeriksaan teliti. Barang jumlah ikut keluar sesuai angka yang direncanakan.</small>}
 
-        {isTech && sent.length > 0 && (
+        {isTech && (sent.length > 0 || bSent.length > 0) && (
           <div style={{ marginTop: 16 }}>
             <b>Terima barang</b>
-            <p><small>Cek barang secara fisik. Centang hanya unit yang <b>kurang atau rusak</b>; sisanya otomatis diterima.</small></p>
+            <p><small>Cek barang secara fisik. Centang unit yang <b>kurang atau rusak</b>. Untuk barang jumlah, ubah angka bila yang sampai lebih sedikit.</small></p>
             {sent.map((u) => (
               <div className="check" key={u.id}>
                 <input type="checkbox" id={'x' + u.id} checked={u.id in exc} onChange={(e) => toggle(u.id, e.target.checked)} />
@@ -96,16 +104,36 @@ export default function Serah({ ev, units }) {
                   : <Badge s={u.status} />}
               </div>
             ))}
+            {bSent.map((e) => (
+              <div className="check" key={e.bid}>
+                <label style={{ flex: 1 }}><b>{e.nama}</b> <small>dikirim {e.qtyKeluar}</small></label>
+                <input type="number" min="0" max={e.qtyKeluar} aria-label={'Jumlah diterima ' + e.nama} value={qv(e, e.qtyKeluar)} onChange={(x) => setBq({ ...bq, [e.bid]: x.target.value })} style={{ width: 90 }} />
+              </div>
+            ))}
             <div style={{ marginTop: 12 }}>
-              <button className="big" disabled={busy || sent.length === Object.keys(exc).length} onClick={doIn}>Terima semua ({sent.length - Object.keys(exc).length} unit)</button>
+              <button className="big" disabled={busy || nTerima <= 0} onClick={doIn}>Terima semua ({nTerima})</button>
             </div>
           </div>
         )}
 
-        {isTech && using.length > 0 && (
+        {isTech && (using.length > 0 || bUse.length > 0) && (
           <div style={{ marginTop: 16 }}>
             <b>Setelah event selesai</b>
-            <div style={{ marginTop: 8 }}><button className="big" disabled={busy} onClick={doBack}>Kembalikan semua ({using.length} unit)</button></div>
+            <div style={{ marginTop: 8 }}><button className="big" disabled={busy} onClick={doBack}>Kembalikan semua ({using.length + bUse.length})</button></div>
+          </div>
+        )}
+
+        {staff && bBack.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <b>Terima gudang: hitung barang jumlah</b>
+            <p><small>Hitung barang yang benar-benar kembali. Bila kurang, selisih tercatat di Dashboard.</small></p>
+            {bBack.map((e) => (
+              <div className="check" key={e.bid}>
+                <label style={{ flex: 1 }}><b>{e.nama}</b> <small>keluar {e.qtyKeluar}, dilaporkan kembali {e.qtyKembali}</small></label>
+                <input type="number" min="0" max={e.qtyKeluar} aria-label={'Jumlah kembali ' + e.nama} value={qv(e, e.qtyKembali)} onChange={(x) => setBq({ ...bq, [e.bid]: x.target.value })} style={{ width: 90 }} />
+              </div>
+            ))}
+            <div style={{ marginTop: 12 }}><button disabled={busy} onClick={doGudang}>Simpan hitungan gudang</button></div>
           </div>
         )}
       </div>

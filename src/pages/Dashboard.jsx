@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { ref, update } from 'firebase/database';
+import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
 import { useVal, list, today, range, unitsOf } from '../util.js';
 import { STATUS, STATUS_LIST, OUT, IN_EVENT, norm } from './status.js';
@@ -14,19 +16,39 @@ function LateBox({ late, events }) {
   );
 }
 
-// Selisih serah terima: unit yang dikecualikan teknisi (kurang/rusak) dan masih berstatus "Sudah keluar"
-function SelisihBox({ serah, assets, events }) {
+// Selisih serah terima: unit pengecualian (masih "Sudah keluar") dan barang jumlah yang kurang
+function SelisihBox({ serah, assets, events, bulkEvent, isAdmin }) {
   const rows = [];
   Object.entries(serah || {}).forEach(([eid, recs]) => Object.values(recs || {}).forEach((r) => {
     Object.entries(r.pengecualian || {}).forEach(([aid, x]) => {
       const a = assets?.[aid];
-      if (a && norm(a.status) === 'keluar' && a.eventId === eid) rows.push({ aid, eid, kode: x.kode || a.kode, nama: x.nama || a.nama, alasan: x.alasan, oleh: r.nama, waktu: r.waktu });
+      if (a && norm(a.status) === 'keluar' && a.eventId === eid) rows.push({ k: aid + eid, to: '/aset/' + aid, kode: x.kode || a.kode, nama: x.nama || a.nama, eid, ket: x.alasan ? `alasan: ${x.alasan}` : 'tidak diterima teknisi', oleh: r.nama, waktu: r.waktu });
     });
+  }));
+  Object.entries(bulkEvent || {}).forEach(([eid, m]) => Object.entries(m || {}).forEach(([bid, e]) => {
+    if (['diterima', 'kembali'].includes(e.tahap) && e.qtyTerima < e.qtyKeluar) rows.push({ k: bid + eid, kode: e.nama, nama: '', eid, ket: `kurang ${e.qtyKeluar - e.qtyTerima} saat diterima teknisi (${e.qtyTerima} dari ${e.qtyKeluar})`, oleh: e.terimaOleh, waktu: e.terimaWaktu });
+    if (e.tahap === 'selesai' && e.hilang > 0 && !e.beres) rows.push({ k: 'h' + bid + eid, kode: e.nama, nama: '', eid, ket: `tidak kembali ${e.hilang} (kembali ${e.qtyGudang} dari ${e.qtyKeluar})`, oleh: e.gudangOleh, waktu: e.gudangWaktu, beres: isAdmin ? `bulkEvent/${eid}/${bid}` : null });
   }));
   if (!rows.length) return null;
   return (
-    <div className="card late"><b className="err">Selisih serah terima ({rows.length} unit)</b>
-      <ul>{rows.map((x) => <li key={x.aid + x.eid}><Link to={'/aset/' + x.aid}>{x.kode}</Link> {x.nama}: event “{events?.[x.eid]?.nama || x.eid}”{x.alasan ? `, alasan: ${x.alasan}` : ''} <small>(dicatat {x.oleh}, {new Date(x.waktu).toLocaleString('id-ID')})</small></li>)}</ul></div>
+    <div className="card late"><b className="err">Selisih serah terima ({rows.length})</b>
+      <ul>{rows.map((x) => <li key={x.k}>{x.to ? <Link to={x.to}>{x.kode}</Link> : <b>{x.kode}</b>} {x.nama}: event “{events?.[x.eid]?.nama || x.eid}”, {x.ket}{x.waktu ? <small> (dicatat {x.oleh}, {new Date(x.waktu).toLocaleString('id-ID')})</small> : null}
+        {x.beres && <> <button className="ghost" onClick={() => update(ref(db, x.beres), { beres: true })}>Tandai beres</button></>}</li>)}</ul></div>
+  );
+}
+
+// Stok barang jumlah: total, sedang keluar, tersedia
+function BulkBox({ items, bulkEvent }) {
+  const its = list(items);
+  if (!its.length) return null;
+  const out = {};
+  Object.values(bulkEvent || {}).forEach((m) => Object.entries(m || {}).forEach(([bid, e]) => { if (['keluar', 'diterima', 'kembali'].includes(e.tahap)) out[bid] = (out[bid] || 0) + (e.qtyKeluar || 0); }));
+  return (
+    <>
+      <h2>Stok barang jumlah</h2>
+      <div className="tbl"><table><thead><tr><th>Barang</th><th>Total</th><th>Sedang keluar</th><th>Tersedia</th></tr></thead>
+        <tbody>{its.sort((a, b) => (a.nama || '').localeCompare(b.nama || '')).map((i) => <tr key={i.id}><td>{i.nama}</td><td>{i.total}</td><td>{out[i.id] || 0}</td><td><b>{Math.max(0, i.total - (out[i.id] || 0))}</b></td></tr>)}</tbody></table></div>
+    </>
   );
 }
 
@@ -136,6 +158,8 @@ export default function Dashboard() {
   const events = useVal('events');
   const bookings = useVal('assetBookings');
   const serah = useVal('serahTerima');
+  const bulk = useVal('bulk');
+  const bulkEvent = useVal('bulkEvent');
   if (assets === undefined || events === undefined || bookings === undefined) return <div className="pad"><Loading /></div>;
   const a = list(assets).map((x) => ({ ...x, status: norm(x.status) }));
   const evs = list(events);
@@ -154,10 +178,11 @@ export default function Dashboard() {
       </section>
       <div className="pad">
         <LateBox late={late} events={events} />
-        {role !== 'teknisi' && <SelisihBox serah={serah} assets={assets} events={events} />}
+        {role !== 'teknisi' && <SelisihBox serah={serah} assets={assets} events={events} bulkEvent={bulkEvent} isAdmin={role === 'admin'} />}
         {role === 'admin' && <Admin a={a} evs={evs} t={t} bookings={bookings} assets={assets} />}
         {role === 'warehouse' && <Warehouse a={a} evs={evs} t={t} bookings={bookings} assets={assets} events={events} />}
         {role === 'teknisi' && <Teknisi evs={evs} t={t} bookings={bookings} assets={assets} uid={profile.uid} />}
+        {role !== 'teknisi' && <BulkBox items={bulk} bulkEvent={bulkEvent} />}
         <h2>Status unit ({a.length})</h2>
         <div className="status-grid">
           {STATUS_LIST.map((s) => (

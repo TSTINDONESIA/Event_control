@@ -117,35 +117,64 @@ export async function release(a, evId, bookingsOfAsset, uid, evNama) {
 async function many(units, fn) {
   const ok = []; const gagal = [];
   for (const u of units) {
-    try { await fn(u); ok.push(u); } catch (e) { gagal.push(`${u.kode}: ${e.message}`); }
+    try { await fn(u); ok.push(u); } catch (e) { gagal.push(`${u.kode || u.nama}: ${e.message}`); }
   }
   return { ok, gagal };
 }
 
-// Catatan serah terima per event: siapa, kapan, unit apa saja (tidak bisa diubah setelah dibuat)
+// Catatan serah terima per event: siapa, kapan, apa saja (tidak bisa diubah setelah dibuat)
 export async function catatSerah(eventId, profile, data) {
   const rec = { uid: profile.uid, nama: profile.nama, waktu: Date.now(), ...data };
   await set(push(ref(db, `serahTerima/${eventId}`)), rec);
   return rec;
 }
 
-export async function siapkanSemua(units, ev, profile) {
-  const r = await many(units, (u) => runAction('siapkan', u, profile, { eventId: ev.id }));
-  if (r.ok.length) { audit(profile.uid, 'siapkan_semua', `${ev.nama}: ${r.ok.length} unit`).catch(() => {}); }
-  return r;
+// ---------- Barang jumlah (kabel, konektor, stand, dll): dicatat per jumlah, tanpa QR ----------
+export const bulkList = (be) => Object.entries(be || {}).map(([bid, v]) => ({ bid, ...v }));
+const clampN = (v, max) => Math.max(0, Math.min(max, Math.floor(Number(v) || 0)));
+
+// stok barang jumlah yang masih bebas di tanggal event (dikurangi event lain yang beririsan dan belum selesai)
+export function bulkAvail(bid, item, allBE, ev) {
+  let used = 0;
+  Object.entries(allBE || {}).forEach(([eid, m]) => {
+    const e = m?.[bid];
+    if (eid !== ev.id && e && e.tahap !== 'selesai' && overlap(e, ev)) used += e.qty || 0;
+  });
+  return Math.max(0, (item.total || 0) - used);
 }
 
-export async function keluarkanSemua(units, ev, profile) {
+export async function bulkAllocate(bid, item, qty, ev, allBE, profile) {
+  const n = Math.floor(Number(qty));
+  if (!(n > 0)) throw new Error('Jumlah harus lebih dari 0.');
+  const cur = allBE?.[ev.id]?.[bid];
+  if (cur && cur.tahap !== 'rencana') throw new Error(`${item.nama}: sudah dikeluarkan, jumlah tidak bisa diubah.`);
+  const free = bulkAvail(bid, item, allBE, ev);
+  if (n > free) throw new Error(`${item.nama}: stok tersedia di tanggal ini hanya ${free}.`);
+  await set(ref(db, `bulkEvent/${ev.id}/${bid}`), { nama: item.nama, kategori: item.kategori || '', qty: n, mulai: ev.mulai, selesai: ev.selesai, tahap: 'rencana' });
+  await audit(profile.uid, 'alokasi_jumlah', `${item.nama} x${n} -> ${ev.nama}`);
+}
+
+export async function bulkRelease(bid, item, ev, profile) {
+  await set(ref(db, `bulkEvent/${ev.id}/${bid}`), null);
+  await audit(profile.uid, 'lepas_jumlah', `${item.nama || bid} <- ${ev.nama}`);
+}
+
+export async function keluarkanSemua(units, ev, profile, bulk = []) {
   const r = await many(units, (u) => runAction('keluarkan', u, profile, { eventId: ev.id }));
-  if (r.ok.length) {
-    await catatSerah(ev.id, profile, { tipe: 'keluar', units: Object.fromEntries(r.ok.map((u) => [u.id, true])), jumlah: r.ok.length });
-    audit(profile.uid, 'keluarkan_semua', `${ev.nama}: ${r.ok.length} unit`).catch(() => {});
+  const b = await many(bulk, (e) => update(ref(db, `bulkEvent/${ev.id}/${e.bid}`), { tahap: 'keluar', qtyKeluar: e.qty }));
+  if (r.ok.length || b.ok.length) {
+    await catatSerah(ev.id, profile, {
+      tipe: 'keluar', jumlah: r.ok.length,
+      ...(r.ok.length ? { units: Object.fromEntries(r.ok.map((u) => [u.id, true])) } : {}),
+      ...(b.ok.length ? { bulk: Object.fromEntries(b.ok.map((e) => [e.bid, { nama: e.nama, kategori: e.kategori || '', qty: e.qty }])) } : {}),
+    });
+    audit(profile.uid, 'keluarkan_semua', `${ev.nama}: ${r.ok.length} unit, ${b.ok.length} jenis jumlah`).catch(() => {});
   }
-  return r;
+  return { ok: r.ok, gagal: [...r.gagal, ...b.gagal], bulk: b.ok.length };
 }
 
-// pengecualian = { [assetId]: alasan }  (unit yang kurang/rusak: tetap "Sudah keluar" dan jadi selisih)
-export async function terimaSemua(units, ev, profile, pengecualian = {}) {
+// pengecualian = { [assetId]: alasan } untuk unit; bulkQty = { [bid]: jumlah yang benar-benar diterima }
+export async function terimaSemua(units, ev, profile, pengecualian = {}, bulk = [], bulkQty = {}) {
   const terima = units.filter((u) => !(u.id in pengecualian));
   const r = await many(terima, async (u) => {
     await runAction('terima', u, profile, { eventId: ev.id });
@@ -153,21 +182,45 @@ export async function terimaSemua(units, ev, profile, pengecualian = {}) {
   });
   const exc = {};
   units.filter((u) => u.id in pengecualian).forEach((u) => { exc[u.id] = { kode: u.kode, nama: u.nama || '', alasan: pengecualian[u.id] || '' }; });
+  const sum = {};
+  const b = await many(bulk, async (e) => {
+    const n = clampN(bulkQty[e.bid] ?? e.qtyKeluar, e.qtyKeluar);
+    await update(ref(db, `bulkEvent/${ev.id}/${e.bid}`), { tahap: 'diterima', qtyTerima: n, terimaOleh: profile.nama, terimaWaktu: Date.now() });
+    sum[e.bid] = { nama: e.nama, dikirim: e.qtyKeluar, diterima: n };
+  });
   await catatSerah(ev.id, profile, {
     tipe: 'terima',
     diterima: Object.fromEntries(r.ok.map((u) => [u.id, true])),
     jumlah: r.ok.length,
     ...(Object.keys(exc).length ? { pengecualian: exc } : {}),
+    ...(Object.keys(sum).length ? { bulk: sum } : {}),
   });
-  audit(profile.uid, 'terima_semua', `${ev.nama}: ${r.ok.length} unit, ${Object.keys(exc).length} pengecualian`).catch(() => {});
-  return r;
+  audit(profile.uid, 'terima_semua', `${ev.nama}: ${r.ok.length} unit, ${Object.keys(exc).length} pengecualian, ${b.ok.length} jenis jumlah`).catch(() => {});
+  return { ok: r.ok, gagal: [...r.gagal, ...b.gagal], bulk: b.ok.length };
 }
 
-export async function kembalikanSemua(units, ev, profile) {
+export async function kembalikanSemua(units, ev, profile, bulk = []) {
   const r = await many(units, (u) => runAction('kembalikan', u, profile, { eventId: ev.id }));
-  if (r.ok.length) {
-    await catatSerah(ev.id, profile, { tipe: 'kembali', units: Object.fromEntries(r.ok.map((u) => [u.id, true])), jumlah: r.ok.length });
-    audit(profile.uid, 'kembalikan_semua', `${ev.nama}: ${r.ok.length} unit`).catch(() => {});
+  const b = await many(bulk, (e) => update(ref(db, `bulkEvent/${ev.id}/${e.bid}`), { tahap: 'kembali', qtyKembali: e.qtyTerima ?? 0, kembaliOleh: profile.nama, kembaliWaktu: Date.now() }));
+  if (r.ok.length || b.ok.length) {
+    await catatSerah(ev.id, profile, { tipe: 'kembali', jumlah: r.ok.length, ...(r.ok.length ? { units: Object.fromEntries(r.ok.map((u) => [u.id, true])) } : {}) });
+    audit(profile.uid, 'kembalikan_semua', `${ev.nama}: ${r.ok.length} unit, ${b.ok.length} jenis jumlah`).catch(() => {});
   }
+  return { ok: r.ok, gagal: [...r.gagal, ...b.gagal], bulk: b.ok.length };
+}
+
+// Gudang menghitung barang jumlah yang benar-benar kembali (titik pemeriksaan resmi)
+export async function bulkTerimaGudang(bulk, ev, profile, qtyMap) {
+  const b = await many(bulk, async (e) => {
+    const n = clampN(qtyMap[e.bid] ?? e.qtyKembali, e.qtyKeluar);
+    await update(ref(db, `bulkEvent/${ev.id}/${e.bid}`), { tahap: 'selesai', qtyGudang: n, hilang: (e.qtyKeluar || 0) - n, gudangOleh: profile.nama, gudangWaktu: Date.now() });
+  });
+  if (b.ok.length) audit(profile.uid, 'terima_gudang_jumlah', `${ev.nama}: ${b.ok.length} jenis`).catch(() => {});
+  return { ok: [], gagal: b.gagal, bulk: b.ok.length };
+}
+
+export async function siapkanSemua(units, ev, profile) {
+  const r = await many(units, (u) => runAction('siapkan', u, profile, { eventId: ev.id }));
+  if (r.ok.length) { audit(profile.uid, 'siapkan_semua', `${ev.nama}: ${r.ok.length} unit`).catch(() => {}); }
   return r;
 }

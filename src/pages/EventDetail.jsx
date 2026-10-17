@@ -9,6 +9,7 @@ import { FREE, norm } from './status.js';
 import { Band, Badge, Progress, Loading } from '../components.jsx';
 import Assign from '../Assign.jsx';
 import Serah from '../Serah.jsx';
+import BulkEvent from '../BulkEvent.jsx';
 
 export default function EventDetail() {
   const { id } = useParams();
@@ -125,6 +126,7 @@ export default function EventDetail() {
               </tr>
             ))}</tbody></table></div>
         )}
+        <BulkEvent ev={ev} canManage={canManage} />
       </div>
     </>
   );

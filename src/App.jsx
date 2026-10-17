@@ -19,6 +19,7 @@ import Users from './pages/Users.jsx';
 import Password from './pages/Password.jsx';
 import Daftar from './pages/Daftar.jsx';
 import SuratJalan from './pages/SuratJalan.jsx';
+import BarangJumlah from './pages/BarangJumlah.jsx';
 
 const TITLES = {
   '/event': ['Event', 'Jadwal event, kebutuhan peralatan, dan teknisi.'],
@@ -28,6 +29,7 @@ const TITLES = {
   '/riwayat': ['Riwayat & audit', 'Setiap perpindahan unit tercatat dan dapat dipertanggungjawabkan.'],
   '/laporan': ['Laporan', 'Stok per kategori, kerusakan, dan ekspor data.'],
   '/label': ['Cetak QR', 'Label QR massal per kategori.'],
+  '/barang-jumlah': ['Barang jumlah', 'Stok kabel, konektor, dan barang sejenis yang dicatat per jumlah.'],
   '/kategori': ['Kategori', 'Master data kategori peralatan.'],
   '/daftar': ['Daftarkan unit via scan', 'Tempel label, scan, isi nama. Unit langsung masuk stok.'],
   '/password': ['Ganti password', 'Jaga kerahasiaan akun Anda.'],
@@ -70,6 +72,7 @@ export default function App() {
               <details className="more">
                 <summary>Lainnya ▾</summary>
                 <div className="more-menu">
+                  <NavLink to="/barang-jumlah">Barang jumlah</NavLink>
                   <NavLink to="/daftar">Daftar unit (scan)</NavLink>
                   <NavLink to="/riwayat">Riwayat</NavLink>
                   <NavLink to="/laporan">Laporan</NavLink>
@@ -102,6 +105,7 @@ export default function App() {
           <Route path="/tugas" element={<Tugas />} />
           <Route path="/scan" element={<Scan />} />
           <Route path="/password" element={<Password />} />
+          {staff && <Route path="/barang-jumlah" element={<BarangJumlah />} />}
           {staff && <Route path="/daftar" element={<Daftar />} />}
           {staff && <Route path="/kategori" element={<Kategori />} />}
           {role === 'admin' && <Route path="/pengguna" element={<Users />} />}
