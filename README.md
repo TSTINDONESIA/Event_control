@@ -1,58 +1,48 @@
-# TST EVENT CONTROL (v0.2)
+# TST EVENT CONTROL v1.0
 
-React + Vite + Firebase (Auth + Realtime Database), deploy ke GitHub Pages.
-Status: **v0.2 — folder `src/` dan workflow deploy sudah dilengkapi (v0.1 blank karena `src/` hilang). Belum diuji online.** Anda perlu mengisi config Firebase sendiri.
+React + Vite + Firebase (Auth + Realtime Database), dideploy ke GitHub Pages.
 
-## Sudah ada
-Login/logout, dashboard status stok, event, inventory + QR per unit, cetak label satu unit,
-scan QR kamera + input manual, alokasi dengan cek bentrok tanggal (transaksi atomik),
-keluar/masuk dengan konfirmasi, transaksi & audit log (hanya bisa dibuat, tidak bisa diubah), halaman Riwayat + viewer audit (admin).
+## Fitur
+- Login/logout, 3 role: **admin**, **warehouse** (gudang), **teknisi**.
+- Dashboard: stok per status, event mendatang, unit terlambat kembali.
+- Event: tambah, edit (alokasi ikut menyesuaikan, dicek bentrok), hapus; penugasan teknisi.
+- Inventaris: unit dengan QR, kategori, impor/ekspor CSV, edit data, hapus (admin).
+- Scan QR kamera + input manual; alokasi dengan cek bentrok tanggal (transaksi atomik).
+- Keluar/masuk dengan konfirmasi; status rusak/servis/tersedia; transaksi & audit log tidak bisa diubah.
+- Teknisi: menu Tugas dengan checklist per event, laporan kerusakan per unit.
+- Laporan stok per kategori + ekspor CSV; cetak label QR satu/massal.
+- Pengguna (admin): buat akun, ubah role/aktif/email, kirim reset password.
 
-## Belum ada (tahap berikutnya)
-Halaman Laporan, manajemen pengguna & kategori, penugasan teknisi +
-checklist/laporan kerusakan oleh teknisi, cetak QR massal, impor/ekspor CSV.
+## Hak akses
+| | admin | warehouse | teknisi |
+|---|---|---|---|
+| Lihat dashboard/event/inventaris | ✓ | ✓ | ✓ |
+| Tambah/edit/hapus event, tugaskan teknisi | ✓ | | |
+| Alokasi, keluar/masuk, tambah/edit unit, kategori | ✓ | ✓ | |
+| Riwayat, laporan, scan, label | ✓ | ✓ | |
+| Hapus aset, kelola pengguna, audit log | ✓ | | |
+| Checklist tugas, laporan kerusakan | ✓ | | ✓ (event yang ditugaskan) |
 
 ## Setup
-1. https://console.firebase.google.com → buat proyek (paket Spark/gratis).
-2. Build → Authentication → Get started → aktifkan **Email/Password**.
-3. Build → Realtime Database → Create database → mode **locked**.
-4. Project settings → Your apps → tambah **Web app** → salin config ke `src/firebaseConfig.js`.
-5. Realtime Database → tab **Rules** → tempel isi `database.rules.json` → Publish.
-6. Authentication → Authorized domains → tambahkan `USERNAME.github.io`.
+1. Firebase Console → proyek (Spark/gratis) → Authentication → aktifkan **Email/Password**.
+2. Realtime Database → buat database → isi `src/firebaseConfig.js` (termasuk `databaseURL` sesuai region).
+3. Tab Rules → tempel `database.rules.json` → Publish.
+4. Authorized domains → tambahkan `USERNAME.github.io`.
+5. Akun admin pertama: buat user di Authentication, lalu tambahkan `users/<UID>` = `nama`, `email`, `role: "admin"`, `aktif: true` (boolean). Akun lain dibuat dari menu Pengguna.
+6. GitHub: Settings → Pages → Source **GitHub Actions**; push ke `main`.
 
-## Akun admin pertama (aman)
-1. Authentication → Users → Add user (email + password). Salin **User UID**.
-2. Realtime Database → tambah node `users/<UID>` berisi:
-   `nama: "Nama Anda"`, `email: "..."`, `role: "admin"`, `aktif: true`.
-3. Hanya admin yang bisa menulis `users/*` (diatur Rules), jadi tidak ada cara naik role dari aplikasi.
-4. Untuk karyawan lain: ulangi langkah yang sama dengan role `warehouse` atau `teknisi`.
+Jalankan lokal: `npm install` lalu `npm run dev`. Kamera HP butuh HTTPS (GitHub Pages sudah HTTPS). Cetak label QR setelah deploy, bukan saat localhost.
 
-## Jalankan lokal
-`npm install` lalu `npm run dev`. Kamera HP butuh HTTPS (GitHub Pages sudah HTTPS).
-
-## Deploy GitHub Pages
-1. Unggah semua file ke repo GitHub (branch `main`).
-2. Settings → Pages → Source: **GitHub Actions**.
-3. Push ke `main`; workflow `deploy.yml` membangun dan menerbitkan.
-4. Alamat: `https://USERNAME.github.io/NAMA-REPO/`. URL QR otomatis memakai alamat ini,
-   jadi **cetak label QR setelah deploy**, bukan saat `localhost`.
-
-## Uji fungsional
-- Login: akun benar masuk; password salah ditolak; user tanpa node `users/<uid>` ditolak.
-- Scan: buka alamat deploy di HP → Scan QR → izinkan kamera → arahkan ke label. Tolak izin → harus muncul pesan + input manual.
-- Keluar-masuk: unit `tersedia` → Keluarkan (pilih event) → status `keluar` → Terima kembali (baik) → `tersedia`. Klik dua kali cepat: hanya satu transaksi tercatat.
-- Bentrok: buat 2 event dengan tanggal beririsan, alokasikan aset yang sama ke keduanya → event kedua harus ditolak.
-
-## Uji keamanan sebelum operasional
-- Login sebagai teknisi: coba ubah `users/<uid>/role` lewat console browser → harus ditolak.
-- Teknisi tidak boleh menulis `assets`, `events`, `transactions`.
-- Edit/hapus data di `transactions` dan `audit` harus ditolak untuk semua role (kecuali lewat Console).
-- Tanpa login, baca/tulis semua node harus ditolak (Rules Playground).
-- Akun `aktif:false` tidak bisa membaca data.
+## Uji sebelum operasional
+- Login: password salah ditolak; user tanpa `users/<uid>` atau `aktif:false` ditolak.
+- Bentrok: dua event tanggal beririsan, aset sama dialokasikan ke keduanya → kedua ditolak; edit tanggal event yang membuat bentrok → ditolak.
+- Keluar-masuk: tersedia → Keluarkan → keluar → Terima kembali → tersedia; klik ganda hanya satu transaksi.
+- Teknisi: tidak ada tombol aksi stok; tidak bisa ubah `users/*/role` lewat console browser.
+- Tanpa login, baca/tulis semua node ditolak (Rules Playground).
 - Pastikan tidak ada service account/private key di repo.
 
-## Batasan yang perlu Anda tahu
-- Security Rules tidak bisa memvalidasi bentrok tanggal; pengecekan ada di transaksi klien.
-  Pengguna warehouse yang berniat curang bisa menulis langsung ke database. Untuk jaminan penuh dibutuhkan backend tepercaya.
-- Update status aset dan pencatatan transaksi adalah dua langkah; jika koneksi putus di antaranya, status berubah tanpa catatan transaksi.
+## Batasan yang perlu diketahui
+- Cek bentrok tanggal dilakukan di klien; pengguna gudang yang sengaja curang bisa menulis langsung ke database. Jaminan penuh butuh backend tepercaya.
+- Status aset dan catatan transaksi adalah dua penulisan; bila pencatatan gagal setelah 3 percobaan, status otomatis dikembalikan.
 - Semua pengguna aktif bisa membaca semua event (belum dibatasi per teknisi).
+- Akun lama tidak dihapus dari Authentication saat dinonaktifkan; nonaktifkan lewat menu Pengguna.

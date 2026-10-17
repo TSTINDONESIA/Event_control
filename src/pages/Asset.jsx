@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ref, push, update, runTransaction } from 'firebase/database';
 import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
@@ -10,6 +10,7 @@ import DamageReport from '../DamageReport.jsx';
 export default function Asset() {
   const { id } = useParams();
   const { profile } = useAuth();
+  const nav = useNavigate();
   const a = useVal('assets/' + id);
   const events = useVal('events');
   const bookings = useVal('assetBookings/' + id);
@@ -40,10 +41,22 @@ export default function Asset() {
       return n;
     });
     if (!r.committed || r.snapshot.val()?.status !== to) throw new Error('Status aset sudah berubah. Muat ulang halaman.');
-    await push(ref(db, 'transactions'), {
-      tipe, assetId: id, kode: a.kode, petugas: profile.uid, petugasNama: profile.nama, waktu: Date.now(), ...extra,
-    });
-    await audit(profile.uid, tipe, a.kode);
+    const rec = { tipe, assetId: id, kode: a.kode, petugas: profile.uid, petugasNama: profile.nama, waktu: Date.now(), ...extra };
+    let ok = false;
+    for (let i = 0; i < 3 && !ok; i++) {
+      try { await push(ref(db, 'transactions'), rec); ok = true; } catch { await new Promise((r) => setTimeout(r, 600)); }
+    }
+    if (!ok) {
+      // transaksi gagal dicatat: kembalikan status agar data tetap konsisten
+      await runTransaction(ref(db, 'assets/' + id), (cur) => {
+        if (cur === null) return cur;
+        const n = { ...cur, status: a.status };
+        if (a.eventId) n.eventId = a.eventId; else delete n.eventId;
+        return n;
+      });
+      throw new Error('Gagal mencatat transaksi, status dikembalikan. Coba lagi.');
+    }
+    audit(profile.uid, tipe, a.kode).catch(() => {});
   }
   const alokasi = () => run(async () => {
     const ev = events[alokEv];
@@ -140,6 +153,16 @@ export default function Asset() {
             if (!confirm(`Tandai ${a.kode} RUSAK?`)) return;
             await change(['tersedia', 'dialokasikan', 'keluar', 'digunakan'], 'rusak', 'rusak', { kondisi: 'rusak' });
           })}>Tandai rusak</button>
+        </div>
+      )}
+      {profile.role === 'admin' && ['tersedia', 'dialokasikan'].includes(a.status) && (
+        <div className="card row">
+          <button disabled={busy} onClick={() => run(async () => {
+            if (!confirm(`Hapus ${a.kode} permanen? Riwayat transaksi tetap tersimpan.`)) return;
+            await update(ref(db), { ['assets/' + id]: null, ['assetBookings/' + id]: null });
+            await audit(profile.uid, 'hapus_aset', a.kode);
+            nav('/inventaris');
+          })}>Hapus aset</button>
         </div>
       )}
       <DamageReport assetId={id} kode={a.kode} />
