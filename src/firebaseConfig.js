@@ -1,8 +1,13 @@
-// Isi dengan config Web App dari Firebase Console (Project settings → Your apps).
+// Config Web App Firebase: proyek tsteventcontrol
 export default {
-  apiKey: 'ISI_API_KEY',
-  authDomain: 'ISI.firebaseapp.com',
-  databaseURL: 'https://ISI-default-rtdb.asia-southeast1.firebasedatabase.app',
-  projectId: 'ISI',
-  appId: 'ISI',
+  apiKey: 'AIzaSyCMtmtlBMBB2lffd4FlpCoqKNZ30Uz0XNA',
+  authDomain: 'tsteventcontrol.firebaseapp.com',
+  projectId: 'tsteventcontrol',
+  storageBucket: 'tsteventcontrol.firebasestorage.app',
+  messagingSenderId: '638909524493',
+  appId: '1:638909524493:web:59f70a1e0a6e55e712c344',
+  // WAJIB jika Realtime Database dibuat di region Singapore/Belgium. Salin dari
+  // Console → Realtime Database (URL di bagian atas data). Contoh:
+  // databaseURL: 'https://tsteventcontrol-default-rtdb.asia-southeast1.firebasedatabase.app',
+  // Jika database di region US (Iowa), baris ini boleh dikosongkan.
 };
