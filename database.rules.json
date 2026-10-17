@@ -10,6 +10,10 @@
         ".validate": "newData.hasChildren(['nama','role','aktif'])",
         "role": {
           ".validate": "newData.val().matches(/^(admin|warehouse|teknisi)$/)"
+        },
+        "wajibGanti": {
+          ".write": "auth!=null&&auth.uid===$uid&&root.child('users/'+auth.uid+'/aktif').val()===true",
+          ".validate": "newData.isBoolean()"
         }
       }
     },

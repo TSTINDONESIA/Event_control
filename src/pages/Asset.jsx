@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ref, update } from 'firebase/database';
 import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
-import { useVal, useByChild, list, assetUrl, audit, fmt, today, range } from '../util.js';
+import { useVal, useByChild, labelId, list, assetUrl, audit, fmt, today, range } from '../util.js';
 import { allocate, actionsFor, runAction } from '../flow.js';
 import { QR, Badge, Band, Stepper, Loading } from '../components.jsx';
 import { STATUS, TIPE, norm } from './status.js';
@@ -28,7 +28,13 @@ export default function Asset() {
   const [edit, setEdit] = useState(null);
 
   if (a0 === undefined || events === undefined) return <div className="pad"><Loading /></div>;
-  if (a0 === null) return <div className="pad"><p>Unit tidak ditemukan. <Link to="/inventaris">Kembali</Link></p></div>;
+  if (a0 === null) return (
+    <div className="pad">
+      {profile.role !== 'teknisi' && labelId(id) ? (
+        <div className="next"><h3>Label ini belum terdaftar</h3><p>Isi nama dan kategori barang agar masuk ke stok.</p><Link className="btn big" to={'/daftar?id=' + id}>Daftarkan unit ini</Link></div>
+      ) : <p>Unit tidak ditemukan. <Link to="/inventaris">Kembali</Link></p>}
+    </div>
+  );
   const a = { id, ...a0, status: norm(a0.status) };
   const t = today();
   const booked = list(bookings).map((b) => ({ ...b, nama: events?.[b.id]?.nama || b.id }));

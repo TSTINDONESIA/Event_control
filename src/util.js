@@ -38,3 +38,11 @@ export const unitsOf = (eid, bookings, assets) =>
 
 export const audit = (uid, aksi, detail) =>
   push(ref(db, 'audit'), { uid, aksi, detail: String(detail || ''), waktu: Date.now() });
+
+// id label dari teks QR (#/aset/<id>) atau id mentah; null bila bukan format label
+export function labelId(text) {
+  const t = String(text || '').trim();
+  const m = t.match(/#\/aset\/([^/?\s]+)/);
+  const id = m ? m[1] : t;
+  return /^[-_A-Za-z0-9]{15,30}$/.test(id) ? id : null;
+}

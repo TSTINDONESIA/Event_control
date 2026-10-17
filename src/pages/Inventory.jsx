@@ -42,6 +42,7 @@ export default function Inventory() {
     .sort((a, b) => (a.kode || '').localeCompare(b.kode || ''));
   return (
     <>
+      {canWrite && <p><Link className="btn dark" to="/daftar">Daftarkan unit via scan</Link> <small>Tempel label, scan, isi nama.</small></p>}
       {canWrite && (
         <form className="card flag row" onSubmit={add}><b>Unit baru</b>
           <input aria-label="Nama aset" placeholder="Nama aset" value={f.nama} onChange={(e) => setF({ ...f, nama: e.target.value })} required />

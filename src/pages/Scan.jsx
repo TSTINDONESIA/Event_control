@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
-import { useVal, list } from '../util.js';
+import { useVal, list, labelId } from '../util.js';
+import { useAuth } from '../AuthContext.jsx';
 
 export default function Scan() {
   const nav = useNavigate();
+  const { profile } = useAuth();
   const assets = useVal('assets');
   const latest = useRef([]);
   const done = useRef(false);
@@ -22,7 +24,10 @@ export default function Scan() {
   function go(text) {
     if (done.current) return;
     const id = resolve(text);
-    if (id) { done.current = true; nav('/aset/' + id); } else setErr('QR / kode tidak dikenali: ' + text);
+    if (id) { done.current = true; nav('/aset/' + id); return; }
+    const lid = labelId(text);
+    if (lid && profile.role !== 'teknisi') { done.current = true; nav('/daftar?id=' + lid); return; } // label baru: daftarkan
+    setErr('QR / kode tidak dikenali: ' + text);
   }
   useEffect(() => {
     const q = new Html5Qrcode('reader');

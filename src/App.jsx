@@ -16,6 +16,8 @@ import Labels from './pages/Labels.jsx';
 import Tugas from './pages/Tugas.jsx';
 import Kategori from './pages/Kategori.jsx';
 import Users from './pages/Users.jsx';
+import Password from './pages/Password.jsx';
+import Daftar from './pages/Daftar.jsx';
 
 const TITLES = {
   '/event': ['Event', 'Jadwal event, kebutuhan peralatan, dan teknisi.'],
@@ -26,6 +28,8 @@ const TITLES = {
   '/laporan': ['Laporan', 'Stok per kategori, kerusakan, dan ekspor data.'],
   '/label': ['Cetak QR', 'Label QR massal per kategori.'],
   '/kategori': ['Kategori', 'Master data kategori peralatan.'],
+  '/daftar': ['Daftarkan unit via scan', 'Tempel label, scan, isi nama. Unit langsung masuk stok.'],
+  '/password': ['Ganti password', 'Jaga kerahasiaan akun Anda.'],
   '/pengguna': ['Pengguna & peran', 'Kelola akun Admin, Warehouse, dan Teknisi.'],
 };
 
@@ -65,6 +69,7 @@ export default function App() {
               <details className="more">
                 <summary>Lainnya ▾</summary>
                 <div className="more-menu">
+                  <NavLink to="/daftar">Daftar unit (scan)</NavLink>
                   <NavLink to="/riwayat">Riwayat</NavLink>
                   <NavLink to="/laporan">Laporan</NavLink>
                   <NavLink to="/label">Label QR</NavLink>
@@ -76,10 +81,14 @@ export default function App() {
           </nav>
           <div className="who">
             <span><span className="lbl">Masuk sebagai</span><span className="nm">{profile.nama}<i>{role}</i></span></span>
+            <Link to="/password" className="btn ghost" onClick={close}>Ganti password</Link>
             <button className="ghost" onClick={logout}>Keluar</button>
           </div>
         </div>
       </header>
+      {profile.wajibGanti === true && pathname !== '/password' && (
+        <div className="notice" role="alert"><b>Akun Anda baru dibuat.</b> Demi privasi, ganti password dari admin dengan password pribadi Anda. <Link to="/password" className="btn dark">Ganti password sekarang</Link></div>
+      )}
       {band && <Band title={band[0]} sub={band[1]} />}
       <main className={pathname === '/' ? '' : 'pad'}>
         <Routes>
@@ -90,6 +99,8 @@ export default function App() {
           <Route path="/aset/:id" element={<Asset />} />
           <Route path="/tugas" element={<Tugas />} />
           <Route path="/scan" element={<Scan />} />
+          <Route path="/password" element={<Password />} />
+          {staff && <Route path="/daftar" element={<Daftar />} />}
           {staff && <Route path="/kategori" element={<Kategori />} />}
           {role === 'admin' && <Route path="/pengguna" element={<Users />} />}
           {staff && <Route path="/riwayat" element={<History />} />}

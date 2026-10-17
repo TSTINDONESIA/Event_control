@@ -27,7 +27,7 @@ export default function Users() {
       const a2 = getAuth(app2);
       const c = await createUserWithEmailAndPassword(a2, f.email.trim(), f.password);
       try {
-        await set(ref(db, 'users/' + c.user.uid), { nama: f.nama.trim(), email: f.email.trim(), role: f.role, aktif: true });
+        await set(ref(db, 'users/' + c.user.uid), { nama: f.nama.trim(), email: f.email.trim(), role: f.role, aktif: true, wajibGanti: true });
       } catch (x) { throw new Error(`Akun login dibuat (UID ${c.user.uid}) tapi profil gagal disimpan: ${x.message}`); }
       await audit(profile.uid, 'user_baru', f.email);
       await signOut(a2);
@@ -49,6 +49,7 @@ export default function Users() {
         </select>
         <button disabled={busy}>{busy ? 'Membuat…' : 'Buat pengguna'}</button>
       </form>
+      <p><small>Akun baru akan diminta mengganti password saat login pertama, jadi password awal ini hanya Anda dan pengguna yang tahu. Pengguna juga bisa mengganti password kapan saja lewat menu “Ganti password”.</small></p>
       {msg && <p role="status" className={/berhasil|dikirim/.test(msg) ? 'okmsg' : 'err'}>{msg}</p>}
       <div className="tbl"><table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Aktif</th><th>Reset password</th></tr></thead>
         <tbody>{list(users).sort((a, b) => (a.nama || '').localeCompare(b.nama || '')).map((u) => {

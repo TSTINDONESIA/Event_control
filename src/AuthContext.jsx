@@ -29,5 +29,5 @@ export function AuthProvider({ children }) {
       }
     });
   }, []);
-  return <Ctx.Provider value={{ ...s, error, logout: () => signOut(auth) }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ ...s, error, logout: () => signOut(auth), patchProfile: (d) => setS((x) => ({ ...x, profile: { ...x.profile, ...d } })) }}>{children}</Ctx.Provider>;
 }
