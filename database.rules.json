@@ -1,0 +1,59 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "users": {
+      "$uid": {
+        ".read": "auth!=null&&(auth.uid===$uid||root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true)",
+        ".write": "root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        ".validate": "newData.hasChildren(['nama','role','aktif'])",
+        "role": {
+          ".validate": "newData.val().matches(/^(admin|warehouse|teknisi)$/)"
+        }
+      }
+    },
+    "assets": {
+      ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
+      "$id": {
+        ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        ".validate": "newData.hasChildren(['kode','status'])",
+        "status": {
+          ".validate": "newData.val().matches(/^(tersedia|dialokasikan|keluar|digunakan|rusak|servis|hilang)$/)"
+        }
+      }
+    },
+    "events": {
+      ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
+      "$id": {
+        ".write": "root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        ".validate": "newData.hasChildren(['nama','mulai','selesai'])"
+      }
+    },
+    "assetBookings": {
+      ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
+      "$aid": {
+        ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        "$eid": {
+          ".validate": "newData.hasChildren(['mulai','selesai'])"
+        }
+      }
+    },
+    "transactions": {
+      ".read": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
+      "$tx": {
+        ".write": "!data.exists()&&(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        ".validate": "newData.hasChildren(['tipe','assetId','petugas','waktu'])",
+        "petugas": {
+          ".validate": "newData.val()===auth.uid"
+        }
+      }
+    },
+    "audit": {
+      ".read": "root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true",
+      "$id": {
+        ".write": "!data.exists()&&auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        ".validate": "newData.child('uid').val()===auth.uid"
+      }
+    }
+  }
+}
