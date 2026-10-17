@@ -20,6 +20,7 @@ import Password from './pages/Password.jsx';
 import Daftar from './pages/Daftar.jsx';
 import SuratJalan from './pages/SuratJalan.jsx';
 import BarangJumlah from './pages/BarangJumlah.jsx';
+import Uji from './pages/Uji.jsx';
 
 const TITLES = {
   '/event': ['Event', 'Jadwal event, kebutuhan peralatan, dan teknisi.'],
@@ -34,6 +35,7 @@ const TITLES = {
   '/daftar': ['Daftarkan unit via scan', 'Tempel label, scan, isi nama. Unit langsung masuk stok.'],
   '/password': ['Ganti password', 'Jaga kerahasiaan akun Anda.'],
   '/pengguna': ['Pengguna & peran', 'Kelola akun Admin, Warehouse, dan Teknisi.'],
+  '/uji': ['Kontrol utama', 'Mode uji coba: hapus data dalam jumlah besar. Hanya akun kontrol utama.'],
 };
 
 function Setup() {
@@ -79,6 +81,7 @@ export default function App() {
                   <NavLink to="/label">Label QR</NavLink>
                   <NavLink to="/kategori">Kategori</NavLink>
                   {role === 'admin' && <NavLink to="/pengguna">Pengguna</NavLink>}
+                  {profile.super && <NavLink to="/uji">Kontrol utama</NavLink>}
                 </div>
               </details>
             )}
@@ -109,6 +112,7 @@ export default function App() {
           {staff && <Route path="/daftar" element={<Daftar />} />}
           {staff && <Route path="/kategori" element={<Kategori />} />}
           {role === 'admin' && <Route path="/pengguna" element={<Users />} />}
+          {profile.super && <Route path="/uji" element={<Uji />} />}
           {staff && <Route path="/riwayat" element={<History />} />}
           {staff && <Route path="/laporan" element={<Report />} />}
           {staff && <Route path="/label" element={<Labels />} />}
