@@ -224,3 +224,21 @@ export async function siapkanSemua(units, ev, profile) {
   if (r.ok.length) { audit(profile.uid, 'siapkan_semua', `${ev.nama}: ${r.ok.length} unit`).catch(() => {}); }
   return r;
 }
+
+// Gudang memeriksa barang yang dikembalikan teknisi, dicocokkan dengan surat jalan.
+// Semua unit dianggap baik kecuali yang ada di `exc` = { [assetId]: { jenis: 'rusak' | 'hilang', catatan } }
+export async function periksaGudang(units, ev, profile, exc = {}) {
+  const baik = units.filter((u) => !(u.id in exc));
+  const bad = units.filter((u) => u.id in exc);
+  const r = await many(baik, (u) => runAction('masukBaik', u, profile, { eventId: ev.id }));
+  const rb = await many(bad, (u) => (exc[u.id].jenis === 'hilang'
+    ? runAction('tandaiHilang', u, profile, { catatan: exc[u.id].catatan || 'Tidak kembali' })
+    : runAction('masukRusak', u, profile, { eventId: ev.id, catatan: exc[u.id].catatan || 'Rusak saat dikembalikan' })));
+  const pengecualian = {};
+  rb.ok.forEach((u) => { pengecualian[u.id] = { kode: u.kode, nama: u.nama || '', jenis: exc[u.id].jenis, alasan: exc[u.id].catatan || '' }; });
+  if (r.ok.length || rb.ok.length) {
+    await catatSerah(ev.id, profile, { tipe: 'periksa', jumlah: r.ok.length, ...(Object.keys(pengecualian).length ? { pengecualian } : {}) });
+    audit(profile.uid, 'periksa_gudang', `${ev.nama}: ${r.ok.length} baik, ${rb.ok.length} bermasalah`).catch(() => {});
+  }
+  return { ok: [...r.ok, ...rb.ok], gagal: [...r.gagal, ...rb.gagal] };
+}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from './AuthContext.jsx';
 import { useVal, list, fmt } from './util.js';
-import { siapkanSemua, keluarkanSemua, terimaSemua, kembalikanSemua, bulkTerimaGudang, bulkList } from './flow.js';
+import { siapkanSemua, keluarkanSemua, terimaSemua, kembalikanSemua, bulkTerimaGudang, bulkList, periksaGudang } from './flow.js';
 import { Badge } from './components.jsx';
 
 // Panel serah terima per event: gudang (Siapkan/Keluarkan semua) dan teknisi (Terima semua / Kembalikan semua)
@@ -12,6 +12,7 @@ export default function Serah({ ev, units }) {
   const bE = useVal('bulkEvent/' + ev.id);
   const [exc, setExc] = useState({});   // unit pengecualian { assetId: alasan }
   const [bq, setBq] = useState({});     // jumlah barang jumlah { bid: angka }
+  const [gx, setGx] = useState({});    // unit bermasalah saat gudang periksa { assetId: { jenis, catatan } }
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [ok, setOk] = useState('');
@@ -62,6 +63,12 @@ export default function Serah({ ev, units }) {
     run(() => kembalikanSemua(using, ev, profile, bUse), (r) => txt(r, 'dikembalikan. Menunggu dicek gudang.'));
   };
   const doGudang = () => run(() => bulkTerimaGudang(bBack, ev, profile, bq), (r) => `${r.bulk} jenis barang jumlah selesai dihitung gudang.`).then(() => setBq({}));
+  const nBad = Object.keys(gx).length;
+  const doPeriksa = () => {
+    if (!confirm(`Terima ${back.length - nBad} unit kondisi baik${nBad ? ` dan catat ${nBad} unit bermasalah` : ''}?\n\nPastikan sudah dicocokkan dengan surat jalan.`)) return;
+    run(() => periksaGudang(back, ev, profile, gx), (r) => `${r.ok.length} unit selesai diperiksa gudang.`).then(() => setGx({}));
+  };
+  const toggleG = (id, on) => setGx((p) => { const n = { ...p }; if (on) n[id] = { jenis: 'rusak', catatan: '' }; else delete n[id]; return n; });
   const toggle = (id, on) => setExc((p) => { const n = { ...p }; if (on) n[id] = ''; else delete n[id]; return n; });
   const qv = (e, def) => (bq[e.bid] ?? def);
 
@@ -120,6 +127,30 @@ export default function Serah({ ev, units }) {
           <div style={{ marginTop: 16 }}>
             <b>Setelah event selesai</b>
             <div style={{ marginTop: 8 }}><button className="big" disabled={busy} onClick={doBack}>Kembalikan semua ({using.length + bUse.length})</button></div>
+          </div>
+        )}
+
+        {staff && back.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <b>Periksa pengembalian (sesuai surat jalan)</b>
+            <p><small>Cocokkan barang dengan surat jalan. Semua unit dianggap <b>baik</b>; centang unit yang <b>rusak atau hilang</b>.</small></p>
+            {back.map((u) => (
+              <div className="check" key={u.id}>
+                <input type="checkbox" id={'g' + u.id} checked={u.id in gx} onChange={(e) => toggleG(u.id, e.target.checked)} />
+                <label htmlFor={'g' + u.id} style={{ flex: 1 }}><b>{u.kode}</b> {u.nama} <small>{u.kategori || ''}</small></label>
+                {u.id in gx ? (
+                  <>
+                    <select aria-label={'Jenis masalah ' + u.kode} value={gx[u.id].jenis} onChange={(e) => setGx({ ...gx, [u.id]: { ...gx[u.id], jenis: e.target.value } })}>
+                      <option value="rusak">Rusak</option><option value="hilang">Hilang</option>
+                    </select>
+                    <input aria-label={'Catatan ' + u.kode} placeholder="Catatan" value={gx[u.id].catatan} onChange={(e) => setGx({ ...gx, [u.id]: { ...gx[u.id], catatan: e.target.value } })} style={{ maxWidth: 180 }} />
+                  </>
+                ) : <Badge s={u.status} />}
+              </div>
+            ))}
+            <div style={{ marginTop: 12 }}>
+              <button className="big" disabled={busy} onClick={doPeriksa}>Terima gudang ({back.length - nBad} baik{nBad ? `, ${nBad} bermasalah` : ''})</button>
+            </div>
           </div>
         )}
 

@@ -42,19 +42,24 @@ export default function SuratJalan() {
           <tr><td>Jumlah unit</td><td><b>{rows.length}</b>{bulk.length > 0 && ` + ${bulk.length} jenis barang jumlah`}</td></tr>
         </tbody></table>
         <div className="tbl"><table>
-          <thead><tr><th>No</th><th>Kode</th><th>Nama</th><th>Kategori</th><th>Dicek</th></tr></thead>
-          <tbody>{rows.map((u, i) => <tr key={u.id}><td>{i + 1}</td><td>{u.kode}</td><td>{u.nama}</td><td>{u.kategori || '-'}</td><td style={{ width: 60, textAlign: 'center' }}>☐</td></tr>)}</tbody>
+          <thead><tr><th>No</th><th>Kode</th><th>Nama</th><th>Kategori</th><th>Dicek keluar</th><th>Kembali</th></tr></thead>
+          <tbody>{rows.map((u, i) => <tr key={u.id}><td>{i + 1}</td><td>{u.kode}</td><td>{u.nama}</td><td>{u.kategori || '-'}</td><td style={{ width: 60, textAlign: 'center' }}>☐</td><td style={{ width: 60, textAlign: 'center' }}>☐</td></tr>)}</tbody>
         </table></div>
         {bulk.length > 0 && (
           <div className="tbl" style={{ marginTop: 12 }}><table>
-            <thead><tr><th>No</th><th>Barang jumlah</th><th>Kategori</th><th>Jumlah</th><th>Dicek</th></tr></thead>
-            <tbody>{bulk.map((b, i) => <tr key={b.bid}><td>{i + 1}</td><td>{b.nama}</td><td>{b.kategori || '-'}</td><td>{b.qty}</td><td style={{ width: 60, textAlign: 'center' }}>☐</td></tr>)}</tbody>
+            <thead><tr><th>No</th><th>Barang jumlah</th><th>Kategori</th><th>Jumlah</th><th>Dicek keluar</th><th>Kembali</th></tr></thead>
+            <tbody>{bulk.map((b, i) => <tr key={b.bid}><td>{i + 1}</td><td>{b.nama}</td><td>{b.kategori || '-'}</td><td>{b.qty}</td><td style={{ width: 60, textAlign: 'center' }}>☐</td><td style={{ width: 60, textAlign: 'center' }}>☐</td></tr>)}</tbody>
           </table></div>
         )}
         <small>Scan QR di pojok untuk membuka halaman event dan menekan “Terima semua”.</small>
         <div className="sj-sign">
           <div>Petugas gudang<br /><br /><br />( {out.nama} )</div>
           <div>Teknisi penerima<br /><br /><br />( {teknisi} )</div>
+        </div>
+        <p style={{ marginTop: 16 }}><b>Pengembalian</b> <small>(isi saat barang kembali ke gudang)</small></p>
+        <div className="sj-sign">
+          <div>Teknisi yang mengembalikan<br /><br /><br />( {teknisi} )</div>
+          <div>Petugas gudang pemeriksa<br /><br /><br />( .......................... )</div>
         </div>
       </div>
     </div>
