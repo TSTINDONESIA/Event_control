@@ -3,6 +3,7 @@
     ".read": false,
     ".write": false,
     "users": {
+      ".read": "root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true",
       "$uid": {
         ".read": "auth!=null&&(auth.uid===$uid||root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true)",
         ".write": "root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true",
@@ -60,6 +61,15 @@
       "$id": {
         ".write": "!data.exists()&&auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
         ".validate": "newData.hasChildren(['assetId','uid','catatan','waktu'])&&newData.child('uid').val()===auth.uid"
+      }
+    },
+    "checklist": {
+      "$eid": {
+        ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        "$aid": {
+          ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true)||(root.child('events/'+$eid+'/teknisi/'+auth.uid).exists()&&root.child('users/'+auth.uid+'/aktif').val()===true)",
+          ".validate": "newData.hasChildren(['ok','uid','waktu'])&&newData.child('uid').val()===auth.uid"
+        }
       }
     }
   }

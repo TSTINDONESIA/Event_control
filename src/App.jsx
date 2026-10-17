@@ -10,6 +10,8 @@ import Scan from './pages/Scan.jsx';
 import History from './pages/History.jsx';
 import Report from './pages/Report.jsx';
 import Labels from './pages/Labels.jsx';
+import Tugas from './pages/Tugas.jsx';
+import Users from './pages/Users.jsx';
 
 function Setup() {
   return (
@@ -34,10 +36,12 @@ export default function App() {
           <NavLink to="/" end>Dashboard</NavLink>
           <NavLink to="/event">Event</NavLink>
           <NavLink to="/inventaris">Inventaris</NavLink>
+          <NavLink to="/tugas">Tugas</NavLink>
           {staff && <NavLink to="/scan">Scan</NavLink>}
           {staff && <NavLink to="/riwayat">Riwayat</NavLink>}
           {staff && <NavLink to="/laporan">Laporan</NavLink>}
           {staff && <NavLink to="/label">Label</NavLink>}
+          {profile.role === 'admin' && <NavLink to="/pengguna">Pengguna</NavLink>}
         </nav>
         <span className="who">{profile.nama} ({profile.role}) <button onClick={logout}>Keluar</button></span>
       </header>
@@ -47,6 +51,8 @@ export default function App() {
           <Route path="/event" element={<Events />} />
           <Route path="/inventaris" element={<Inventory />} />
           <Route path="/aset/:id" element={<Asset />} />
+          <Route path="/tugas" element={<Tugas />} />
+          {profile.role === 'admin' && <Route path="/pengguna" element={<Users />} />}
           {staff && <Route path="/scan" element={<Scan />} />}
           {staff && <Route path="/riwayat" element={<History />} />}
           {staff && <Route path="/laporan" element={<Report />} />}
