@@ -5,6 +5,7 @@ import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
 import { useVal, list, audit } from '../util.js';
 import { Badge } from '../components.jsx';
+import ImportCSV from '../ImportCSV.jsx';
 
 export default function Inventory() {
   const { profile } = useAuth();
@@ -48,6 +49,7 @@ export default function Inventory() {
           {msg && <p className="err">{msg}</p>}
         </form>
       )}
+      {canWrite && <ImportCSV all={all} />}
       <input className="search" placeholder="Cari kode / nama / kategori" value={q} onChange={(e) => setQ(e.target.value)} />
       {assets === undefined ? <p>Memuat…</p> : (
         <table><thead><tr><th>Kode</th><th>Nama</th><th>Kategori</th><th>Status</th></tr></thead>

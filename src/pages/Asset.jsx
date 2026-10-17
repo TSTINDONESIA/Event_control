@@ -5,6 +5,7 @@ import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
 import { useVal, list, overlap, assetUrl, audit } from '../util.js';
 import { QR, Badge } from '../components.jsx';
+import DamageReport from '../DamageReport.jsx';
 
 export default function Asset() {
   const { id } = useParams();
@@ -119,6 +120,15 @@ export default function Asset() {
           <button disabled={busy} onClick={() => pulih('tersedia', 'pulih')}>Tandai tersedia</button>
         </div>
       )}
+      {canWrite && ['tersedia', 'dialokasikan', 'keluar', 'digunakan'].includes(a.status) && (
+        <div className="card row">
+          <button disabled={busy} onClick={() => run(async () => {
+            if (!confirm(`Tandai ${a.kode} RUSAK?`)) return;
+            await change(['tersedia', 'dialokasikan', 'keluar', 'digunakan'], 'rusak', 'rusak', { kondisi: 'rusak' });
+          })}>Tandai rusak</button>
+        </div>
+      )}
+      <DamageReport assetId={id} kode={a.kode} />
     </>
   );
 }

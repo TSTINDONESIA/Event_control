@@ -8,6 +8,8 @@ import Inventory from './pages/Inventory.jsx';
 import Asset from './pages/Asset.jsx';
 import Scan from './pages/Scan.jsx';
 import History from './pages/History.jsx';
+import Report from './pages/Report.jsx';
+import Labels from './pages/Labels.jsx';
 
 function Setup() {
   return (
@@ -34,6 +36,8 @@ export default function App() {
           <NavLink to="/inventaris">Inventaris</NavLink>
           {staff && <NavLink to="/scan">Scan</NavLink>}
           {staff && <NavLink to="/riwayat">Riwayat</NavLink>}
+          {staff && <NavLink to="/laporan">Laporan</NavLink>}
+          {staff && <NavLink to="/label">Label</NavLink>}
         </nav>
         <span className="who">{profile.nama} ({profile.role}) <button onClick={logout}>Keluar</button></span>
       </header>
@@ -45,6 +49,8 @@ export default function App() {
           <Route path="/aset/:id" element={<Asset />} />
           {staff && <Route path="/scan" element={<Scan />} />}
           {staff && <Route path="/riwayat" element={<History />} />}
+          {staff && <Route path="/laporan" element={<Report />} />}
+          {staff && <Route path="/label" element={<Labels />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

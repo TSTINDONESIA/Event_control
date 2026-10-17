@@ -54,6 +54,13 @@
         ".write": "!data.exists()&&auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
         ".validate": "newData.child('uid').val()===auth.uid"
       }
+    },
+    "laporanRusak": {
+      ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
+      "$id": {
+        ".write": "!data.exists()&&auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        ".validate": "newData.hasChildren(['assetId','uid','catatan','waktu'])&&newData.child('uid').val()===auth.uid"
+      }
     }
   }
 }
