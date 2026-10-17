@@ -71,6 +71,13 @@
           ".validate": "newData.hasChildren(['ok','uid','waktu'])&&newData.child('uid').val()===auth.uid"
         }
       }
+    },
+    "kategori": {
+      ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
+      "$id": {
+        ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        ".validate": "newData.hasChildren(['nama'])"
+      }
     }
   }
 }

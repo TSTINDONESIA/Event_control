@@ -10,6 +10,7 @@ import ImportCSV from '../ImportCSV.jsx';
 export default function Inventory() {
   const { profile } = useAuth();
   const assets = useVal('assets');
+  const kat = useVal('kategori');
   const [q, setQ] = useState('');
   const [f, setF] = useState({ nama: '', kategori: '', jumlah: 1 });
   const [msg, setMsg] = useState('');
@@ -43,7 +44,8 @@ export default function Inventory() {
       {canWrite && (
         <form className="card row" onSubmit={add}>
           <input placeholder="Nama aset" value={f.nama} onChange={(e) => setF({ ...f, nama: e.target.value })} required />
-          <input placeholder="Kategori" value={f.kategori} onChange={(e) => setF({ ...f, kategori: e.target.value })} />
+          <input list="kat" placeholder="Kategori" value={f.kategori} onChange={(e) => setF({ ...f, kategori: e.target.value })} />
+          <datalist id="kat">{list(kat).map((k) => <option key={k.id} value={k.nama} />)}</datalist>
           <input type="number" min="1" max="50" value={f.jumlah} onChange={(e) => setF({ ...f, jumlah: e.target.value })} title="Jumlah unit" />
           <button>Tambah unit</button>
           {msg && <p className="err">{msg}</p>}

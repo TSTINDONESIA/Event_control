@@ -17,6 +17,8 @@ export default function Asset() {
   const [outEv, setOutEv] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [edit, setEdit] = useState(null);
+  const kat = useVal('kategori');
   const canWrite = profile.role !== 'teknisi';
 
   if (a === undefined || events === undefined) return <p>Memuat…</p>;
@@ -85,6 +87,18 @@ export default function Asset() {
           <button onClick={() => window.print()}>Cetak label</button>
         </div>
       </div>
+      {canWrite && (edit ? (
+        <form className="card row" onSubmit={(e) => { e.preventDefault(); run(async () => {
+          await update(ref(db, 'assets/' + id), { nama: edit.nama.trim(), kategori: edit.kategori.trim() });
+          await audit(profile.uid, 'edit_aset', a.kode); setEdit(null);
+        }); }}>
+          <input value={edit.nama} onChange={(e) => setEdit({ ...edit, nama: e.target.value })} required />
+          <input list="kat2" value={edit.kategori} onChange={(e) => setEdit({ ...edit, kategori: e.target.value })} placeholder="Kategori" />
+          <datalist id="kat2">{list(kat).map((k) => <option key={k.id} value={k.nama} />)}</datalist>
+          <button disabled={busy}>Simpan</button>
+          <button type="button" onClick={() => setEdit(null)}>Batal</button>
+        </form>
+      ) : <button onClick={() => setEdit({ nama: a.nama, kategori: a.kategori || '' })}>Edit data</button>)}
       <h3>Alokasi event</h3>
       {booked.length === 0 ? <p>Belum dialokasikan.</p> : (
         <ul>{booked.map((b) => <li key={b.id}>{b.nama} ({b.mulai} s/d {b.selesai})</li>)}</ul>

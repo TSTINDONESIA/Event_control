@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { ref, set, update } from 'firebase/database';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { db } from '../firebase.js';
+import { getAuth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
+import { db, auth } from '../firebase.js';
 import cfg from '../firebaseConfig.js';
 import { useAuth } from '../AuthContext.jsx';
 import { useVal, list, audit } from '../util.js';
@@ -50,15 +50,16 @@ export default function Users() {
         </select>
         <button disabled={busy}>{busy ? 'Membuat…' : 'Buat pengguna'}</button>
       </form>
-      {msg && <p className={msg.startsWith('Pengguna') ? '' : 'err'}>{msg}</p>}
-      <table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Aktif</th></tr></thead>
+      {msg && <p className={/berhasil|dikirim/.test(msg) ? '' : 'err'}>{msg}</p>}
+      <table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Aktif</th><th>Reset password</th></tr></thead>
         <tbody>{list(users).sort((a, b) => (a.nama || '').localeCompare(b.nama || '')).map((u) => {
           const me = u.id === profile.uid;
           return (
-            <tr key={u.id}><td>{u.nama}{me && ' (Anda)'}</td><td>{u.email}</td>
+            <tr key={u.id}><td>{u.nama}{me && ' (Anda)'}</td><td><input defaultValue={u.email} onBlur={(e) => e.target.value.trim() !== (u.email || '') && patch(u.id, { email: e.target.value.trim() })} /></td>
               <td><select disabled={me} value={u.role} onChange={(e) => patch(u.id, { role: e.target.value })}>
                 <option>teknisi</option><option>warehouse</option><option>admin</option></select></td>
-              <td><input type="checkbox" disabled={me} checked={u.aktif === true} onChange={(e) => patch(u.id, { aktif: e.target.checked })} /></td></tr>
+              <td><input type="checkbox" disabled={me} checked={u.aktif === true} onChange={(e) => patch(u.id, { aktif: e.target.checked })} /></td>
+              <td><button onClick={() => sendPasswordResetEmail(auth, u.email).then(() => setMsg('Email reset dikirim ke ' + u.email)).catch((x) => setMsg(x.message))}>Kirim reset</button></td></tr>
           );
         })}</tbody></table>
     </>

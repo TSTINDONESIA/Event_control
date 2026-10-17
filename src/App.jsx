@@ -11,6 +11,7 @@ import History from './pages/History.jsx';
 import Report from './pages/Report.jsx';
 import Labels from './pages/Labels.jsx';
 import Tugas from './pages/Tugas.jsx';
+import Kategori from './pages/Kategori.jsx';
 import Users from './pages/Users.jsx';
 
 function Setup() {
@@ -41,6 +42,7 @@ export default function App() {
           {staff && <NavLink to="/riwayat">Riwayat</NavLink>}
           {staff && <NavLink to="/laporan">Laporan</NavLink>}
           {staff && <NavLink to="/label">Label</NavLink>}
+          {staff && <NavLink to="/kategori">Kategori</NavLink>}
           {profile.role === 'admin' && <NavLink to="/pengguna">Pengguna</NavLink>}
         </nav>
         <span className="who">{profile.nama} ({profile.role}) <button onClick={logout}>Keluar</button></span>
@@ -52,6 +54,7 @@ export default function App() {
           <Route path="/inventaris" element={<Inventory />} />
           <Route path="/aset/:id" element={<Asset />} />
           <Route path="/tugas" element={<Tugas />} />
+          {staff && <Route path="/kategori" element={<Kategori />} />}
           {profile.role === 'admin' && <Route path="/pengguna" element={<Users />} />}
           {staff && <Route path="/scan" element={<Scan />} />}
           {staff && <Route path="/riwayat" element={<History />} />}
