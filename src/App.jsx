@@ -18,6 +18,7 @@ import Kategori from './pages/Kategori.jsx';
 import Users from './pages/Users.jsx';
 import Password from './pages/Password.jsx';
 import Daftar from './pages/Daftar.jsx';
+import SuratJalan from './pages/SuratJalan.jsx';
 
 const TITLES = {
   '/event': ['Event', 'Jadwal event, kebutuhan peralatan, dan teknisi.'],
@@ -95,6 +96,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/event" element={<Events />} />
           <Route path="/event/:id" element={<EventDetail />} />
+          <Route path="/surat-jalan/:id" element={<SuratJalan />} />
           <Route path="/inventaris" element={<Inventory />} />
           <Route path="/aset/:id" element={<Asset />} />
           <Route path="/tugas" element={<Tugas />} />

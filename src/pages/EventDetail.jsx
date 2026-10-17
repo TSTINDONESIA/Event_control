@@ -8,6 +8,7 @@ import { allocate, release } from '../flow.js';
 import { FREE, norm } from './status.js';
 import { Band, Badge, Progress, Loading } from '../components.jsx';
 import Assign from '../Assign.jsx';
+import Serah from '../Serah.jsx';
 
 export default function EventDetail() {
   const { id } = useParams();
@@ -72,6 +73,8 @@ export default function EventDetail() {
           {stat.all > 0 && <div style={{ marginTop: 14 }}><Progress value={checked} max={stat.all} label="Checklist setup" yellow /></div>}
         </div>
         {msg && <p className="err" role="alert">{msg}</p>}
+
+        <Serah ev={ev} units={units} />
 
         <h2>Kebutuhan peralatan &amp; cek stok</h2>
         <p><small>Stok dicek berdasarkan tanggal event ({range(ev)}). Unit yang sudah dialokasikan ke event lain pada tanggal yang bertabrakan tidak dihitung tersedia.</small></p>

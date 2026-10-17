@@ -212,3 +212,13 @@ td input[type=text],td input:not([type]),td input[type=email]{width:100%;min-wid
 .label.blank .line{border-bottom:1px solid #000;width:96px;height:24px}
 .reg{display:grid;grid-template-columns:minmax(280px,420px) 1fr;gap:24px;align-items:start}
 @media (max-width:820px){.reg{grid-template-columns:1fr}}
+
+/* ---------- Surat Jalan & cetak ---------- */
+.sj-meta{width:auto;margin:12px 0}.sj-meta td{border:0;padding:3px 18px 3px 0}
+.sj-sign{display:flex;gap:40px;justify-content:space-between;margin-top:28px;text-align:center}
+.sj-sign>div{flex:1}
+@media print{
+  .site-head,.foot,.band,.notice,.no-print,.hero{display:none!important}
+  .pad{padding:0!important}.card{border:0!important}
+  body{background:#fff}
+}

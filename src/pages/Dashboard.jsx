@@ -14,6 +14,22 @@ function LateBox({ late, events }) {
   );
 }
 
+// Selisih serah terima: unit yang dikecualikan teknisi (kurang/rusak) dan masih berstatus "Sudah keluar"
+function SelisihBox({ serah, assets, events }) {
+  const rows = [];
+  Object.entries(serah || {}).forEach(([eid, recs]) => Object.values(recs || {}).forEach((r) => {
+    Object.entries(r.pengecualian || {}).forEach(([aid, x]) => {
+      const a = assets?.[aid];
+      if (a && norm(a.status) === 'keluar' && a.eventId === eid) rows.push({ aid, eid, kode: x.kode || a.kode, nama: x.nama || a.nama, alasan: x.alasan, oleh: r.nama, waktu: r.waktu });
+    });
+  }));
+  if (!rows.length) return null;
+  return (
+    <div className="card late"><b className="err">Selisih serah terima ({rows.length} unit)</b>
+      <ul>{rows.map((x) => <li key={x.aid + x.eid}><Link to={'/aset/' + x.aid}>{x.kode}</Link> {x.nama}: event “{events?.[x.eid]?.nama || x.eid}”{x.alasan ? `, alasan: ${x.alasan}` : ''} <small>(dicatat {x.oleh}, {new Date(x.waktu).toLocaleString('id-ID')})</small></li>)}</ul></div>
+  );
+}
+
 function MonthChart({ evs }) {
   const now = new Date();
   const months = Array.from({ length: 6 }, (_, i) => {
@@ -119,6 +135,7 @@ export default function Dashboard() {
   const assets = useVal('assets');
   const events = useVal('events');
   const bookings = useVal('assetBookings');
+  const serah = useVal('serahTerima');
   if (assets === undefined || events === undefined || bookings === undefined) return <div className="pad"><Loading /></div>;
   const a = list(assets).map((x) => ({ ...x, status: norm(x.status) }));
   const evs = list(events);
@@ -137,6 +154,7 @@ export default function Dashboard() {
       </section>
       <div className="pad">
         <LateBox late={late} events={events} />
+        {role !== 'teknisi' && <SelisihBox serah={serah} assets={assets} events={events} />}
         {role === 'admin' && <Admin a={a} evs={evs} t={t} bookings={bookings} assets={assets} />}
         {role === 'warehouse' && <Warehouse a={a} evs={evs} t={t} bookings={bookings} assets={assets} events={events} />}
         {role === 'teknisi' && <Teknisi evs={evs} t={t} bookings={bookings} assets={assets} uid={profile.uid} />}

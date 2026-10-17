@@ -70,6 +70,15 @@
         ".validate": "newData.hasChildren(['assetId','uid','catatan','waktu'])&&newData.child('uid').val()===auth.uid"
       }
     },
+    "serahTerima": {
+      ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
+      "$eid": {
+        "$rid": {
+          ".write": "!data.exists()&&root.child('users/'+auth.uid+'/aktif').val()===true&&((root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')||root.child('events/'+$eid+'/teknisi/'+auth.uid).exists())",
+          ".validate": "newData.hasChildren(['tipe','uid','waktu'])&&newData.child('uid').val()===auth.uid&&newData.child('tipe').val().matches(/^(keluar|terima|kembali)$/)"
+        }
+      }
+    },
     "checklist": {
       "$eid": {
         ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",

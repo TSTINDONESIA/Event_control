@@ -111,3 +111,63 @@ export async function release(a, evId, bookingsOfAsset, uid, evNama) {
   await update(ref(db), up);
   await audit(uid, 'lepas_alokasi', `${a.kode} <- ${evNama}`);
 }
+
+// ---------- Serah terima per event (massal) ----------
+// Menjalankan satu aksi untuk banyak unit, satu per satu. Unit yang gagal dilaporkan, yang lain tetap lanjut.
+async function many(units, fn) {
+  const ok = []; const gagal = [];
+  for (const u of units) {
+    try { await fn(u); ok.push(u); } catch (e) { gagal.push(`${u.kode}: ${e.message}`); }
+  }
+  return { ok, gagal };
+}
+
+// Catatan serah terima per event: siapa, kapan, unit apa saja (tidak bisa diubah setelah dibuat)
+export async function catatSerah(eventId, profile, data) {
+  const rec = { uid: profile.uid, nama: profile.nama, waktu: Date.now(), ...data };
+  await set(push(ref(db, `serahTerima/${eventId}`)), rec);
+  return rec;
+}
+
+export async function siapkanSemua(units, ev, profile) {
+  const r = await many(units, (u) => runAction('siapkan', u, profile, { eventId: ev.id }));
+  if (r.ok.length) { audit(profile.uid, 'siapkan_semua', `${ev.nama}: ${r.ok.length} unit`).catch(() => {}); }
+  return r;
+}
+
+export async function keluarkanSemua(units, ev, profile) {
+  const r = await many(units, (u) => runAction('keluarkan', u, profile, { eventId: ev.id }));
+  if (r.ok.length) {
+    await catatSerah(ev.id, profile, { tipe: 'keluar', units: Object.fromEntries(r.ok.map((u) => [u.id, true])), jumlah: r.ok.length });
+    audit(profile.uid, 'keluarkan_semua', `${ev.nama}: ${r.ok.length} unit`).catch(() => {});
+  }
+  return r;
+}
+
+// pengecualian = { [assetId]: alasan }  (unit yang kurang/rusak: tetap "Sudah keluar" dan jadi selisih)
+export async function terimaSemua(units, ev, profile, pengecualian = {}) {
+  const terima = units.filter((u) => !(u.id in pengecualian));
+  const r = await many(terima, async (u) => {
+    await runAction('terima', u, profile, { eventId: ev.id });
+    await runAction('mulai', { ...u, status: 'diterima' }, profile, { eventId: ev.id }); // otomatis "Sedang digunakan"
+  });
+  const exc = {};
+  units.filter((u) => u.id in pengecualian).forEach((u) => { exc[u.id] = { kode: u.kode, nama: u.nama || '', alasan: pengecualian[u.id] || '' }; });
+  await catatSerah(ev.id, profile, {
+    tipe: 'terima',
+    diterima: Object.fromEntries(r.ok.map((u) => [u.id, true])),
+    jumlah: r.ok.length,
+    ...(Object.keys(exc).length ? { pengecualian: exc } : {}),
+  });
+  audit(profile.uid, 'terima_semua', `${ev.nama}: ${r.ok.length} unit, ${Object.keys(exc).length} pengecualian`).catch(() => {});
+  return r;
+}
+
+export async function kembalikanSemua(units, ev, profile) {
+  const r = await many(units, (u) => runAction('kembalikan', u, profile, { eventId: ev.id }));
+  if (r.ok.length) {
+    await catatSerah(ev.id, profile, { tipe: 'kembali', units: Object.fromEntries(r.ok.map((u) => [u.id, true])), jumlah: r.ok.length });
+    audit(profile.uid, 'kembalikan_semua', `${ev.nama}: ${r.ok.length} unit`).catch(() => {});
+  }
+  return r;
+}
