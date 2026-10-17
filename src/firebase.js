@@ -1,13 +1,13 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getDatabase } from 'firebase/database';
-import cfg from './firebaseConfig.js';
+// Config Web App Firebase: proyek tsteventcontrol
+export default {
+  apiKey: 'AIzaSyCMtmtlBMBB2lffd4FlpCoqKNZ30Uz0XNA',
+  authDomain: 'tsteventcontrol.firebaseapp.com',
+  projectId: 'tsteventcontrol',
+  storageBucket: 'tsteventcontrol.firebasestorage.app',
+  messagingSenderId: '638909524493',
+  appId: '1:638909524493:web:59f70a1e0a6e55e712c344',
 
-export const configured = !!cfg.apiKey && !cfg.apiKey.startsWith('ISI');
-let auth = null, db = null;
-if (configured) {
-  const app = initializeApp(cfg);
-  auth = getAuth(app);
-  db = getDatabase(app); // tanpa databaseURL: dipakai URL default region US
-}
-export { auth, db };
+  // Pakai SATU baris saja. Cocokkan dengan URL di Console → Realtime Database → Data.
+  databaseURL: 'https://tsteventcontrol-default-rtdb.asia-southeast1.firebasedatabase.app', // Singapore
+  // databaseURL: 'https://tsteventcontrol-default-rtdb.firebaseio.com', // US (Iowa)
+};
