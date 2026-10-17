@@ -14,7 +14,8 @@ export function AuthProvider({ children }) {
     return onAuthStateChanged(auth, async (u) => {
       if (!u) { setS({ loading: false, user: null, profile: null }); return; }
       try {
-        const p = (await get(ref(db, 'users/' + u.uid))).val();
+        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Tidak bisa terhubung ke database (10 dtk). Periksa databaseURL di src/firebaseConfig.js.')), 10000));
+        const p = (await Promise.race([get(ref(db, 'users/' + u.uid)), timeout])).val();
         if (!p || p.aktif !== true) {
           setError('Akun belum terdaftar di database atau nonaktif. Hubungi admin.');
           await signOut(auth);
