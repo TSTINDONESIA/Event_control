@@ -40,8 +40,7 @@ export default function Users() {
   if (users === undefined) return <p>Memuat…</p>;
   return (
     <>
-      <h2>Pengguna</h2>
-      <form className="card row" onSubmit={add}>
+      <form className="card flag row" onSubmit={add}>
         <input placeholder="Nama" value={f.nama} onChange={(e) => setF({ ...f, nama: e.target.value })} required />
         <input type="email" placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} required />
         <input type="text" placeholder="Password (min 6)" minLength={6} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} required />
@@ -50,8 +49,8 @@ export default function Users() {
         </select>
         <button disabled={busy}>{busy ? 'Membuat…' : 'Buat pengguna'}</button>
       </form>
-      {msg && <p className={/berhasil|dikirim/.test(msg) ? '' : 'err'}>{msg}</p>}
-      <table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Aktif</th><th>Reset password</th></tr></thead>
+      {msg && <p role="status" className={/berhasil|dikirim/.test(msg) ? 'okmsg' : 'err'}>{msg}</p>}
+      <div className="tbl"><table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Aktif</th><th>Reset password</th></tr></thead>
         <tbody>{list(users).sort((a, b) => (a.nama || '').localeCompare(b.nama || '')).map((u) => {
           const me = u.id === profile.uid;
           return (
@@ -59,9 +58,9 @@ export default function Users() {
               <td><select disabled={me} value={u.role} onChange={(e) => patch(u.id, { role: e.target.value })}>
                 <option>teknisi</option><option>warehouse</option><option>admin</option></select></td>
               <td><input type="checkbox" disabled={me} checked={u.aktif === true} onChange={(e) => patch(u.id, { aktif: e.target.checked })} /></td>
-              <td><button onClick={() => sendPasswordResetEmail(auth, u.email).then(() => setMsg('Email reset dikirim ke ' + u.email)).catch((x) => setMsg(x.message))}>Kirim reset</button></td></tr>
+              <td><button className="ghost" onClick={() => sendPasswordResetEmail(auth, u.email).then(() => setMsg('Email reset dikirim ke ' + u.email)).catch((x) => setMsg(x.message))}>Kirim reset</button></td></tr>
           );
-        })}</tbody></table>
+        })}</tbody></table></div>
     </>
   );
 }

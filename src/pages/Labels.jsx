@@ -11,13 +11,13 @@ export default function Labels() {
   const shown = all.filter((x) => cat === '' || (x.kategori || '') === cat);
   return (
     <>
-      <h2>Cetak QR massal ({shown.length} label)</h2>
+      <h2>{shown.length} label siap cetak</h2>
       <div className="row">
         <select value={cat} onChange={(e) => setCat(e.target.value)}>
           <option value="">Semua kategori</option>
           {cats.map((c) => <option key={c} value={c}>{c || '(tanpa kategori)'}</option>)}
         </select>
-        <button onClick={() => window.print()}>Cetak</button>
+        <button className="dark" onClick={() => window.print()}>Cetak</button>
       </div>
       <div className="print-area labels">
         {shown.map((a) => (

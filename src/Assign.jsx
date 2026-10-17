@@ -24,18 +24,18 @@ export default function Assign({ ev, users, isAdmin }) {
   return (
     <div>
       {Object.entries(assigned).map(([id, n]) => (
-        <span key={id} className="badge" style={{ marginRight: 4 }}>{n}{isAdmin && <b style={{ cursor: 'pointer', marginLeft: 6 }} onClick={() => del(id)}>×</b>}</span>
+        <span key={id} className="tech-chip">{n}{isAdmin && <b role="button" aria-label={`Hapus ${n}`} onClick={() => del(id)}>×</b>}</span>
       ))}
       {isAdmin && techs.length > 0 && (
         <span className="row" style={{ display: 'inline-flex', marginTop: 4 }}>
           <select value={u} onChange={(e) => setU(e.target.value)}>
-            <option value="">+ teknisi</option>
+            <option value="">+ Teknisi</option>
             {techs.map((t) => <option key={t.id} value={t.id}>{t.nama}</option>)}
           </select>
           <button disabled={!u} onClick={add}>Tugaskan</button>
         </span>
       )}
-      {msg && <p className="err">{msg}</p>}
+      {msg && <p className="err" role="alert">{msg}</p>}
     </div>
   );
 }

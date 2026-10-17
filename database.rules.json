@@ -16,17 +16,17 @@
     "assets": {
       ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
       "$id": {
-        ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        ".write": "((root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true)||(root.child('users/'+auth.uid+'/role').val()==='teknisi'&&root.child('users/'+auth.uid+'/aktif').val()===true&&newData.child('eventId').val()===data.child('eventId').val()&&root.child('events/'+data.child('eventId').val()+'/teknisi/'+auth.uid).exists()&&((data.child('status').val()==='keluar'&&newData.child('status').val()==='diterima')||(data.child('status').val()==='diterima'&&(newData.child('status').val()==='digunakan'||newData.child('status').val()==='menunggu_kembali'))||(data.child('status').val()==='digunakan'&&newData.child('status').val()==='menunggu_kembali')))",
         ".validate": "newData.hasChildren(['kode','status'])",
         "status": {
-          ".validate": "newData.val().matches(/^(tersedia|dialokasikan|keluar|digunakan|rusak|servis|hilang)$/)"
+          ".validate": "newData.val().matches(/^(tersedia|dialokasikan|disiapkan|keluar|diterima|digunakan|menunggu_kembali|servis|rusak|hilang|pensiun)$/)"
         }
       }
     },
     "events": {
       ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
       "$id": {
-        ".write": "root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
         ".validate": "newData.hasChildren(['nama','mulai','selesai'])"
       }
     },
@@ -42,12 +42,15 @@
     "transactions": {
       ".read": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
       "$tx": {
-        ".write": "!data.exists()&&(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        ".write": "!data.exists()&&auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
         ".validate": "newData.hasChildren(['tipe','assetId','petugas','waktu'])",
         "petugas": {
           ".validate": "newData.val()===auth.uid"
         }
-      }
+      },
+      ".indexOn": [
+        "assetId"
+      ]
     },
     "audit": {
       ".read": "root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true",
@@ -67,7 +70,7 @@
       "$eid": {
         ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
         "$aid": {
-          ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true)||(root.child('events/'+$eid+'/teknisi/'+auth.uid).exists()&&root.child('users/'+auth.uid+'/aktif').val()===true)",
+          ".write": "((root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true)||(root.child('events/'+$eid+'/teknisi/'+auth.uid).exists()&&root.child('users/'+auth.uid+'/aktif').val()===true)",
           ".validate": "newData.hasChildren(['ok','uid','waktu'])&&newData.child('uid').val()===auth.uid"
         }
       }

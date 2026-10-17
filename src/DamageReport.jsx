@@ -20,14 +20,14 @@ export default function DamageReport({ assetId, kode }) {
   }
   return (
     <>
-      <h3>Laporan kerusakan</h3>
-      {mine.length === 0 ? <p>Belum ada laporan.</p> : (
+      <h2>Laporan kerusakan</h2>
+      {mine.length === 0 ? <p className="empty">Belum ada laporan.</p> : (
         <ul>{mine.map((r) => <li key={r.id}>{fmt(r.waktu)} — {r.nama}: {r.catatan}</li>)}</ul>
       )}
       <form className="card row" onSubmit={send}>
-        <input placeholder="Deskripsi kerusakan" value={t} onChange={(e) => setT(e.target.value)} required style={{ flex: 1 }} />
+        <input aria-label="Deskripsi kerusakan" placeholder="Deskripsi kerusakan" value={t} onChange={(e) => setT(e.target.value)} required style={{ flex: 1 }} />
         <button>Kirim laporan</button>
-        {msg && <p className="err">{msg}</p>}
+        {msg && <p className="err" role="alert">{msg}</p>}
       </form>
     </>
   );

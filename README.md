@@ -46,3 +46,27 @@ Jalankan lokal: `npm install` lalu `npm run dev`. Kamera HP butuh HTTPS (GitHub 
 - Status aset dan catatan transaksi adalah dua penulisan; bila pencatatan gagal setelah 3 percobaan, status otomatis dikembalikan.
 - Semua pengguna aktif bisa membaca semua event (belum dibatasi per teknisi).
 - Akun lama tidak dihapus dari Authentication saat dinonaktifkan; nonaktifkan lewat menu Pengguna.
+
+---
+
+## Pembaruan desain & alur (Okt 2026)
+
+**Tampilan** mengikuti tstindonesia.id: header hitam + garis kuning, Montserrat tebal huruf kapital, hero foto, tombol kuning, footer kantor TST.
+
+**Alur 8 langkah** (sesuai diagram "Alur Proses Sistem"):
+1. Admin/Warehouse buat event, kebutuhan peralatan, dan teknisi: menu *Event*
+2. Cek stok per tanggal & alokasi (tolak jadwal bentrok): halaman detail event
+3. Persiapan gudang, scan QR → `disiapkan`
+4. Pengeluaran, scan QR → `keluar` (Sudah keluar)
+5. Teknisi scan untuk konfirmasi → `diterima`
+6. Setup selesai → `digunakan` (checklist setup otomatis tercentang)
+7. Pengembalian oleh teknisi/gudang → `menunggu_kembali`
+8. Gudang scan & cek kondisi → `tersedia` atau `servis`
+
+Status lain: `hilang`, `pensiun`. Data lama aman: `rusak` ditampilkan sebagai "Servis / rusak".
+
+**WAJIB setelah deploy kode:** publish ulang aturan database
+
+    firebase deploy --only database
+
+(aturan baru mengizinkan teknisi mengonfirmasi langkah 5–7 untuk event yang ditugaskan, dan warehouse mengelola event).

@@ -1,15 +1,19 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ref, push, set, update } from 'firebase/database';
 import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
-import { useVal, list, audit, overlap } from '../util.js';
+import { useVal, list, audit, overlap, range, today } from '../util.js';
+import { IN_EVENT, norm } from './status.js';
 import Assign from '../Assign.jsx';
+import { Loading } from '../components.jsx';
 
 const empty = { nama: '', lokasi: '', mulai: '', selesai: '' };
 
 export default function Events() {
   const { profile } = useAuth();
   const isAdmin = profile.role === 'admin';
+  const canManage = profile.role !== 'teknisi'; // admin & warehouse: kelola event
   const events = useVal('events');
   const bookings = useVal('assetBookings');
   const assets = useVal('assets');
@@ -19,6 +23,7 @@ export default function Events() {
   const [msg, setMsg] = useState('');
   const count = (eid) => Object.values(bookings || {}).filter((b) => b && b[eid]).length;
   const bookedIds = (eid) => Object.keys(bookings || {}).filter((aid) => bookings[aid]?.[eid]);
+  const t = today();
 
   async function add(e) {
     e.preventDefault(); setMsg('');
@@ -52,15 +57,15 @@ export default function Events() {
   }
   async function del(ev) {
     setMsg('');
-    const out = list(assets).filter((a) => a.eventId === ev.id && ['keluar', 'digunakan'].includes(a.status));
-    if (out.length) { setMsg(`Tidak bisa dihapus: ${out.length} unit masih keluar untuk event ini.`); return; }
+    const out = list(assets).filter((a) => a.eventId === ev.id && IN_EVENT.includes(norm(a.status)));
+    if (out.length) { setMsg(`Tidak bisa dihapus: ${out.length} unit masih dalam proses untuk event ini.`); return; }
     if (!confirm(`Hapus event "${ev.nama}" beserta alokasi dan checklist-nya?`)) return;
     try {
       const up = { ['events/' + ev.id]: null, ['checklist/' + ev.id]: null };
       bookedIds(ev.id).forEach((aid) => {
         up[`assetBookings/${aid}/${ev.id}`] = null;
         const rest = Object.keys(bookings[aid]).filter((k) => k !== ev.id).length;
-        if (rest === 0 && assets?.[aid]?.status === 'dialokasikan') up[`assets/${aid}/status`] = 'tersedia';
+        if (rest === 0 && norm(assets?.[aid]?.status) === 'dialokasikan') up[`assets/${aid}/status`] = 'tersedia';
       });
       await update(ref(db), up);
       await audit(profile.uid, 'hapus_event', ev.nama);
@@ -68,29 +73,32 @@ export default function Events() {
   }
   const fields = (v, set_) => (
     <>
-      <input placeholder="Nama event" value={v.nama} onChange={(e) => set_({ ...v, nama: e.target.value })} required />
-      <input placeholder="Lokasi" value={v.lokasi || ''} onChange={(e) => set_({ ...v, lokasi: e.target.value })} />
-      <input type="date" value={v.mulai} onChange={(e) => set_({ ...v, mulai: e.target.value })} required />
-      <input type="date" value={v.selesai} onChange={(e) => set_({ ...v, selesai: e.target.value })} required />
+      <input aria-label="Nama event" placeholder="Nama event" value={v.nama} onChange={(e) => set_({ ...v, nama: e.target.value })} required />
+      <input aria-label="Lokasi" placeholder="Lokasi" value={v.lokasi || ''} onChange={(e) => set_({ ...v, lokasi: e.target.value })} />
+      <input aria-label="Tanggal mulai" type="date" value={v.mulai} onChange={(e) => set_({ ...v, mulai: e.target.value })} required />
+      <input aria-label="Tanggal selesai" type="date" value={v.selesai} onChange={(e) => set_({ ...v, selesai: e.target.value })} required />
     </>
   );
   return (
     <>
-      <h2>Event</h2>
-      {isAdmin && !ed && <form className="card row" onSubmit={add}>{fields(f, setF)}<button>Tambah</button></form>}
-      {isAdmin && ed && (
-        <form className="card row" onSubmit={save}>{fields(ed, setEd)}
-          <button>Simpan</button><button type="button" onClick={() => setEd(null)}>Batal</button></form>
+      {canManage && !ed && <form className="card flag row" onSubmit={add}><b>Event baru</b>{fields(f, setF)}<button>Buat event</button></form>}
+      {canManage && ed && (
+        <form className="card flag row" onSubmit={save}><b>Edit event</b>{fields(ed, setEd)}
+          <button>Simpan</button><button type="button" className="ghost" onClick={() => setEd(null)}>Batal</button></form>
       )}
-      {msg && <p className="err">{msg}</p>}
-      {events === undefined ? <p>Memuat…</p> : (
-        <table><thead><tr><th>Event</th><th>Lokasi</th><th>Mulai</th><th>Selesai</th><th>Aset</th><th>Teknisi</th>{isAdmin && <th></th>}</tr></thead>
+      {msg && <p className="err" role="alert">{msg}</p>}
+      {events === undefined ? <Loading /> : list(events).length === 0 ? <p className="empty">Belum ada event.</p> : (
+        <div className="tbl"><table><thead><tr><th>Event</th><th>Lokasi</th><th>Tanggal</th><th>Unit</th><th>Teknisi</th>{canManage && <th></th>}</tr></thead>
           <tbody>{list(events).sort((a, b) => b.mulai.localeCompare(a.mulai)).map((e) => (
-            <tr key={e.id}><td>{e.nama}</td><td>{e.lokasi || '-'}</td><td>{e.mulai}</td><td>{e.selesai}</td><td>{count(e.id)}</td>
+            <tr key={e.id}>
+              <td><Link to={'/event/' + e.id}>{e.nama}</Link>{e.selesai < t && <small> · selesai</small>}</td>
+              <td>{e.lokasi || '-'}</td><td>{range(e)}</td><td>{count(e.id)}</td>
               <td><Assign ev={e} users={users} isAdmin={isAdmin} /></td>
-              {isAdmin && <td><button onClick={() => setEd({ id: e.id, nama: e.nama, lokasi: e.lokasi || '', mulai: e.mulai, selesai: e.selesai })}>Edit</button>{' '}
-                <button onClick={() => del(e)}>Hapus</button></td>}</tr>
-          ))}</tbody></table>
+              {canManage && <td><div className="row">
+                <button className="ghost" onClick={() => setEd({ id: e.id, nama: e.nama, lokasi: e.lokasi || '', mulai: e.mulai, selesai: e.selesai })}>Edit</button>
+                <button className="danger" onClick={() => del(e)}>Hapus</button></div></td>}
+            </tr>
+          ))}</tbody></table></div>
       )}
     </>
   );

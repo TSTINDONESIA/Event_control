@@ -26,16 +26,15 @@ export default function Kategori() {
   if (kat === undefined) return <p>Memuat…</p>;
   return (
     <>
-      <h2>Kategori</h2>
-      <form className="card row" onSubmit={add}>
-        <input placeholder="Nama kategori" value={n} onChange={(e) => setN(e.target.value)} required />
+      <form className="card flag row" onSubmit={add}>
+        <input aria-label="Nama kategori" placeholder="Nama kategori" value={n} onChange={(e) => setN(e.target.value)} required />
         <button>Tambah</button>
       </form>
-      {msg && <p className="err">{msg}</p>}
-      <table><thead><tr><th>Kategori</th><th>Unit</th><th></th></tr></thead>
+      {msg && <p className="err" role="alert">{msg}</p>}
+      <div className="tbl"><table><thead><tr><th>Kategori</th><th>Unit</th><th></th></tr></thead>
         <tbody>{list(kat).sort((a, b) => a.nama.localeCompare(b.nama)).map((k) => (
-          <tr key={k.id}><td>{k.nama}</td><td>{used(k.nama)}</td><td><button onClick={() => del(k)}>Hapus</button></td></tr>
-        ))}</tbody></table>
+          <tr key={k.id}><td>{k.nama}</td><td>{used(k.nama)}</td><td><button className="danger" onClick={() => del(k)}>Hapus</button></td></tr>
+        ))}</tbody></table></div>
     </>
   );
 }
