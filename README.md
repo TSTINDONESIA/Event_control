@@ -1,15 +1,15 @@
-# TST EVENT CONTROL (base v0.1)
+# TST EVENT CONTROL (v0.2)
 
 React + Vite + Firebase (Auth + Realtime Database), deploy ke GitHub Pages.
-Status: **kerangka awal, belum diuji online.** Anda perlu mengisi config Firebase sendiri.
+Status: **v0.2 — folder `src/` dan workflow deploy sudah dilengkapi (v0.1 blank karena `src/` hilang). Belum diuji online.** Anda perlu mengisi config Firebase sendiri.
 
 ## Sudah ada
 Login/logout, dashboard status stok, event, inventory + QR per unit, cetak label satu unit,
 scan QR kamera + input manual, alokasi dengan cek bentrok tanggal (transaksi atomik),
-keluar/masuk dengan konfirmasi, transaksi & audit log (hanya bisa dibuat, tidak bisa diubah).
+keluar/masuk dengan konfirmasi, transaksi & audit log (hanya bisa dibuat, tidak bisa diubah), halaman Riwayat + viewer audit (admin).
 
 ## Belum ada (tahap berikutnya)
-Halaman Laporan, Audit log viewer, manajemen pengguna & kategori, penugasan teknisi +
+Halaman Laporan, manajemen pengguna & kategori, penugasan teknisi +
 checklist/laporan kerusakan oleh teknisi, cetak QR massal, impor/ekspor CSV.
 
 ## Setup

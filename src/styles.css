@@ -1,0 +1,26 @@
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:#f4f5f7;color:#1b1f24}
+.pad{padding:16px;max-width:1000px;margin:0 auto}
+.top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;background:#16213e;color:#fff;padding:10px 16px}
+.top nav{display:flex;gap:10px;flex:1;flex-wrap:wrap}
+.top a{color:#cfd8ff;text-decoration:none;padding:4px 8px;border-radius:6px}
+.top a.active{background:#3b5bdb;color:#fff}
+.who{font-size:13px}
+.card{background:#fff;border-radius:10px;padding:12px;margin:10px 0;box-shadow:0 1px 3px #0002}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.login{max-width:340px;margin:60px auto;display:flex;flex-direction:column;gap:10px}
+input,select,button{padding:8px 10px;border:1px solid #bbb;border-radius:6px;font:inherit}
+button{background:#3b5bdb;color:#fff;border:0;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+.search{width:100%;margin:8px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;font-size:14px}
+th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
+.err{color:#c92a2a}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.stat .num{font-size:28px;font-weight:700;margin-top:6px}
+.badge{padding:2px 8px;border-radius:99px;font-size:12px;background:#dee2e6}
+.badge.tersedia{background:#b2f2bb}.badge.keluar{background:#ffd8a8}.badge.dialokasikan{background:#a5d8ff}
+.badge.rusak,.badge.hilang{background:#ffa8a8}.badge.servis{background:#ffec99}
+.detail{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+.label{display:flex;gap:10px;align-items:center;border:1px dashed #888;padding:8px}
+@media print{body *{visibility:hidden}.print-area,.print-area *{visibility:visible}.print-area{position:absolute;left:0;top:0;border:0}}
