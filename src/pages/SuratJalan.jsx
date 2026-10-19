@@ -1,65 +1,55 @@
-import { Link, useParams } from 'react-router-dom';
-import { useVal, list, range, fmt } from '../util.js';
-import { QR, Loading } from '../components.jsx';
+import { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { useVal, list, fmtDate } from '../util.js';
+import { Loading } from '../components.jsx';
 
+const days = (e) => Math.round((new Date(e.selesai) - new Date(e.mulai)) / 864e5) + 1;
+
+// Surat Jalan + Berita Acara Serah Terima Pelayanan, siap cetak (format form TST).
 export default function SuratJalan() {
   const { id } = useParams();
   const ev = useVal('events/' + id);
-  const assets = useVal('assets');
-  const catatan = useVal('serahTerima/' + id);
-  if (ev === undefined || assets === undefined || catatan === undefined) return <Loading />;
-  if (ev === null) return <p className="empty">Event tidak ditemukan.</p>;
-
-  const out = list(catatan).filter((r) => r.tipe === 'keluar').sort((a, b) => b.waktu - a.waktu)[0];
-  const url = `${location.origin}${location.pathname}#/event/${id}`;
-  if (!out) return (
-    <div className="card"><p>Surat Jalan belum ada. Gudang perlu menekan <b>Keluarkan semua</b> di halaman event lebih dulu.</p><Link className="btn" to={'/event/' + id}>Ke halaman event</Link></div>
+  const serah = useVal('serahTerima/' + id);
+  const [veh, setVeh] = useState('');
+  if (ev === undefined || serah === undefined) return <Loading />;
+  if (ev === null) return <p>Event tidak ditemukan.</p>;
+  const rows = list(ev.kebutuhan);
+  const layanan = rows.filter((k) => k.grup === 'Layanan (Surat Jalan)');
+  const alat = rows.filter((k) => k.grup !== 'Layanan (Surat Jalan)');
+  const kirim = list(serah).filter((r) => r.tipe === 'keluar').sort((a, b) => b.waktu - a.waktu)[0];
+  const dur = days(ev) + (days(ev) > 1 ? ' DAYS' : ' DAY');
+  const qty = (k) => (k.siap > 0 ? k.siap : k.jumlah);
+  const th = { border: '1px solid #000', padding: '4px 8px', textAlign: 'left' };
+  const Table = ({ items, pad }) => (
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, marginBottom: 14 }}>
+      <thead><tr><th style={{ ...th, width: 36 }}>No</th><th style={th}>Equipment</th><th style={{ ...th, width: 60 }}>QTT</th><th style={{ ...th, width: 90 }}>Duration</th><th style={th}>Description</th></tr></thead>
+      <tbody>{items.map((k, i) => <tr key={k.id}><td style={th}>{i + 1}</td><td style={th}>{k.kategori}</td><td style={th}>{qty(k)}</td><td style={th}>{dur}</td><td style={th}>{k.ket || ''}</td></tr>)}
+        {Array.from({ length: Math.max(0, pad - items.length) }).map((_, i) => <tr key={'p' + i}>{[0, 1, 2, 3, 4].map((c) => <td key={c} style={{ ...th, height: 24 }} />)}</tr>)}</tbody>
+    </table>
   );
-
-  const rows = Object.keys(out.units || {}).map((aid) => ({ id: aid, ...(assets?.[aid] || { kode: aid, nama: '(unit dihapus)' }) }))
-    .sort((a, b) => (a.kode || '').localeCompare(b.kode || ''));
-  const bulk = Object.entries(out.bulk || {}).map(([bid, b]) => ({ bid, ...b })).sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
-  const teknisi = Object.values(ev.teknisi || {}).join(', ') || '-';
-  const wa = 'https://wa.me/?text=' + encodeURIComponent(`Surat Jalan event "${ev.nama}" (${range(ev)}). ${rows.length} unit${bulk.length ? ` + ${bulk.length} jenis barang jumlah` : ''}. Buka, cek barang, lalu klik "Terima semua": ${url}`);
-
   return (
-    <div className="sj">
-      <div className="row no-print" style={{ marginBottom: 12 }}>
-        <button onClick={() => window.print()}>Cetak / Simpan PDF</button>
-        <a className="btn dark" href={wa} target="_blank" rel="noreferrer">Bagikan lewat WhatsApp</a>
-        <Link className="btn ghost" to={'/event/' + id}>← Kembali ke event</Link>
-      </div>
-      <p className="no-print"><small>Untuk PDF: tekan “Cetak / Simpan PDF”, lalu pilih “Simpan sebagai PDF” di pilihan printer.</small></p>
-      <div className="card">
-        <div className="row"><h2 style={{ margin: 0 }}>SURAT JALAN PERALATAN</h2><span className="sp" /><QR text={url} size={110} /></div>
-        <table className="sj-meta"><tbody>
-          <tr><td>Event</td><td><b>{ev.nama}</b></td></tr>
-          <tr><td>Lokasi</td><td>{ev.lokasi || '-'}</td></tr>
-          <tr><td>Tanggal</td><td>{range(ev)}</td></tr>
-          <tr><td>Teknisi</td><td>{teknisi}</td></tr>
-          <tr><td>Petugas gudang</td><td>{out.nama}</td></tr>
-          <tr><td>Waktu keluar</td><td>{fmt(out.waktu)}</td></tr>
-          <tr><td>Jumlah unit</td><td><b>{rows.length}</b>{bulk.length > 0 && ` + ${bulk.length} jenis barang jumlah`}</td></tr>
+    <div className="pad">
+      <p className="no-print row"><Link to={'/event/' + id}>← Kembali ke event</Link>
+        <input placeholder="Nomor kendaraan" value={veh} onChange={(e) => setVeh(e.target.value)} />
+        <button onClick={() => window.print()}>Cetak / simpan PDF</button></p>
+      <div className="print-area card" style={{ maxWidth: 820, background: '#fff', color: '#000' }}>
+        <h3 style={{ textAlign: 'center', margin: 0 }}>PT. TST INDONESIA</h3>
+        <h4 style={{ textAlign: 'center', textDecoration: 'underline', margin: '6px 0 14px' }}>Surat Jalan</h4>
+        <table style={{ width: '100%', fontSize: 14, marginBottom: 12 }}><tbody>
+          <tr><td style={{ width: 130 }}>Event</td><td>: {ev.nama}</td><td style={{ width: 130 }}>Vehicle Number</td><td>: {veh}</td></tr>
+          <tr><td>Venue</td><td>: {ev.lokasi || ''}</td><td>Date</td><td>: {fmtDate(ev.mulai)}</td></tr>
+          <tr><td>Interpreter Name</td><td colSpan="3">: {Object.values(ev.teknisi || {}).join(', ')}</td></tr>
         </tbody></table>
-        <div className="tbl"><table>
-          <thead><tr><th>No</th><th>Kode</th><th>Nama</th><th>Kategori</th><th>Dicek keluar</th><th>Kembali</th></tr></thead>
-          <tbody>{rows.map((u, i) => <tr key={u.id}><td>{i + 1}</td><td>{u.kode}</td><td>{u.nama}</td><td>{u.kategori || '-'}</td><td style={{ width: 60, textAlign: 'center' }}>☐</td><td style={{ width: 60, textAlign: 'center' }}>☐</td></tr>)}</tbody>
-        </table></div>
-        {bulk.length > 0 && (
-          <div className="tbl" style={{ marginTop: 12 }}><table>
-            <thead><tr><th>No</th><th>Barang jumlah</th><th>Kategori</th><th>Jumlah</th><th>Dicek keluar</th><th>Kembali</th></tr></thead>
-            <tbody>{bulk.map((b, i) => <tr key={b.bid}><td>{i + 1}</td><td>{b.nama}</td><td>{b.kategori || '-'}</td><td>{b.qty}</td><td style={{ width: 60, textAlign: 'center' }}>☐</td><td style={{ width: 60, textAlign: 'center' }}>☐</td></tr>)}</tbody>
-          </table></div>
-        )}
-        <small>Scan QR di pojok untuk membuka halaman event dan menekan “Terima semua”.</small>
-        <div className="sj-sign">
-          <div>Petugas gudang<br /><br /><br />( {out.nama} )</div>
-          <div>Teknisi penerima<br /><br /><br />( {teknisi} )</div>
-        </div>
-        <p style={{ marginTop: 16 }}><b>Pengembalian</b> <small>(isi saat barang kembali ke gudang)</small></p>
-        <div className="sj-sign">
-          <div>Teknisi yang mengembalikan<br /><br /><br />( {teknisi} )</div>
-          <div>Petugas gudang pemeriksa<br /><br /><br />( .......................... )</div>
+        <Table items={layanan} pad={10} />
+        {alat.length > 0 && <><b style={{ fontSize: 14 }}>Perlengkapan</b><Table items={alat} pad={0} /></>}
+        <h4 style={{ textAlign: 'center', textDecoration: 'underline', margin: '10px 0' }}>Berita Acara Serah Terima Pelayanan</h4>
+        <Table items={[]} pad={5} />
+        <p style={{ fontSize: 12 }}><u>Note: This letter is official documentation of the services provided and will be included as a supporting document with the Invoice.</u></p>
+        <p style={{ fontSize: 14 }}>The services have been received and accepted in good condition and to our satisfaction,</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginTop: 10 }}>
+          <div>Received by,<div style={{ height: 70 }} />PIC<br />(...........................)</div>
+          <div>Delivered by,<div style={{ height: 70 }} />Technician<br />({Object.values(ev.teknisi || {})[0] || '...........................'})</div>
+          <div>Prepared by,<div style={{ height: 70 }} />Warehouse<br />({kirim?.nama || '...........................'})</div>
         </div>
       </div>
     </div>

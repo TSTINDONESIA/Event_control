@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ref, push, update } from 'firebase/database';
 import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
-import { useVal, list, audit } from '../util.js';
+import { useVal, list, audit, katOptions } from '../util.js';
 import { Badge, Loading } from '../components.jsx';
 import { STATUS, STATUS_LIST, norm } from './status.js';
 import ImportCSV from '../ImportCSV.jsx';
@@ -11,7 +11,6 @@ import ImportCSV from '../ImportCSV.jsx';
 export default function Inventory() {
   const { profile } = useAuth();
   const assets = useVal('assets');
-  const kat = useVal('kategori');
   const [q, setQ] = useState('');
   const [st, setSt] = useState('');
   const [f, setF] = useState({ nama: '', kategori: '', jumlah: 1 });
@@ -42,12 +41,12 @@ export default function Inventory() {
     .sort((a, b) => (a.kode || '').localeCompare(b.kode || ''));
   return (
     <>
-      {canWrite && <p><Link className="btn dark" to="/daftar">Daftarkan unit via scan</Link> <small>Tempel label, scan, isi nama.</small></p>}
+      {canWrite && <p className="row"><Link className="btn dark" to="/daftar">Daftarkan unit via scan</Link><Link className="btn ghost" to="/scan">Cek unit (scan)</Link><Link className="btn ghost" to="/label">Cetak label QR</Link></p>}
       {canWrite && (
         <form className="card flag row" onSubmit={add}><b>Unit baru</b>
           <input aria-label="Nama aset" placeholder="Nama aset" value={f.nama} onChange={(e) => setF({ ...f, nama: e.target.value })} required />
           <input list="kat" aria-label="Kategori" placeholder="Kategori" value={f.kategori} onChange={(e) => setF({ ...f, kategori: e.target.value })} />
-          <datalist id="kat">{list(kat).map((k) => <option key={k.id} value={k.nama} />)}</datalist>
+          <datalist id="kat">{katOptions(assets).map((k) => <option key={k} value={k} />)}</datalist>
           <input type="number" min="1" max="50" value={f.jumlah} onChange={(e) => setF({ ...f, jumlah: e.target.value })} title="Jumlah unit" />
           <button>Tambah unit</button>
           {msg && <p className="err" role="alert">{msg}</p>}

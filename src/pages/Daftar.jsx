@@ -4,14 +4,13 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { ref, runTransaction } from 'firebase/database';
 import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
-import { useVal, list, audit, labelId } from '../util.js';
+import { useVal, list, audit, labelId, katOptions } from '../util.js';
 
 // Pendaftaran unit baru: tempel label kosong → scan → isi nama → masuk stok (status Tersedia)
 export default function Daftar() {
   const { profile } = useAuth();
   const [sp, setSp] = useSearchParams();
   const assets = useVal('assets');
-  const kat = useVal('kategori');
   const latest = useRef({});
   latest.current = assets || {};
   const [cur, setCur] = useState(sp.get('id') || ''); // id label yang sedang diisi
@@ -81,7 +80,7 @@ export default function Daftar() {
             <input id="dn" autoFocus placeholder="mis. Mic tempel" value={f.nama} onChange={(e) => setF({ ...f, nama: e.target.value })} required />
             <label htmlFor="dk">Kategori</label>
             <input id="dk" list="katD" placeholder="mis. Microphone" value={f.kategori} onChange={(e) => setF({ ...f, kategori: e.target.value })} required />
-            <datalist id="katD">{list(kat).map((k) => <option key={k.id} value={k.nama} />)}</datalist>
+            <datalist id="katD">{katOptions(assets).map((k) => <option key={k} value={k} />)}</datalist>
             <div className="row">
               <button disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan unit'}</button>
               <button type="button" className="ghost" onClick={() => { setCur(''); setSp({}); }}>Batal</button>
