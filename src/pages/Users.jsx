@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ref, set, update } from 'firebase/database';
+import { ref, set, update, get } from 'firebase/database';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { db, auth } from '../firebase.js';
@@ -62,6 +62,47 @@ export default function Users() {
               <td><button className="ghost" onClick={() => sendPasswordResetEmail(auth, u.email).then(() => setMsg('Email reset dikirim ke ' + u.email)).catch((x) => setMsg(x.message))}>Kirim reset</button></td></tr>
           );
         })}</tbody></table></div>
+      <ResetData />
     </>
+  );
+}
+
+// Reset data: hapus semua unit, event, dan kategori (akun pengguna TIDAK dihapus). Hanya admin (halaman ini khusus admin).
+function ResetData() {
+  const { profile } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [kode, setKode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  async function go() {
+    setBusy(true); setMsg('');
+    try {
+      const nodes = ['assets', 'events', 'kategori'];
+      const snaps = await Promise.all(nodes.map((n) => get(ref(db, n))));
+      const up = {}; let n = 0;
+      nodes.forEach((node, i) => Object.keys(snaps[i].val() || {}).forEach((id) => { up[`${node}/${id}`] = null; n++; }));
+      if (n === 0) { setMsg('Data sudah kosong.'); }
+      else {
+        await update(ref(db), up);
+        try { await audit(profile.uid, 'reset_data', `${n} data dihapus`); } catch { /* opsional */ }
+        setMsg(`Selesai: ${n} data dihapus (unit, event, kategori). Segarkan halaman.`);
+      }
+      setKode(''); setOpen(false);
+    } catch (e) { setMsg(e.message); }
+    setBusy(false);
+  }
+  return (
+    <div className="card" style={{ marginTop: 28, borderColor: '#c0392b' }}>
+      <b className="err">Reset data (hati-hati)</b>
+      <p><small>Menghapus SEMUA unit (inventaris), event, dan kategori. Akun pengguna tidak ikut terhapus. Tidak bisa dibatalkan.</small></p>
+      {msg && <p role="status" className={/^Selesai|kosong/.test(msg) ? 'okmsg' : 'err'}>{msg}</p>}
+      {!open ? <button className="danger" onClick={() => setOpen(true)}>Reset semua data</button> : (
+        <div className="row">
+          <input aria-label="Ketik RESET" placeholder="Ketik RESET untuk lanjut" value={kode} onChange={(e) => setKode(e.target.value)} />
+          <button className="danger" disabled={busy || kode.trim() !== 'RESET'} onClick={go}>{busy ? 'Menghapus…' : 'Hapus sekarang'}</button>
+          <button className="ghost" disabled={busy} onClick={() => { setOpen(false); setKode(''); }}>Batal</button>
+        </div>
+      )}
+    </div>
   );
 }
