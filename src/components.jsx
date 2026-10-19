@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import QRCode from 'qrcode';
-import { STATUS, STEPS, ACTIVE_STEP, norm } from './pages/status.js';
+import { STATUS, norm } from './pages/status.js';
 
 export const LOGO = 'https://tstindonesia.id/wp-content/uploads/2019/10/tst-logo-350x200.png';
 export const HERO_IMG = 'https://tstindonesia.id/wp-content/uploads/2019/10/davide-ragusa-gcDwzUGuUoI-unsplash.jpg';
@@ -44,20 +44,6 @@ export function Progress({ value, max, label, yellow }) {
   );
 }
 
-// 8 langkah proses; langkah aktif ditentukan oleh status unit
-export function Stepper({ status }) {
-  const act = ACTIVE_STEP[norm(status)] ?? -1;
-  return (
-    <div className="steps" aria-label="Alur proses">
-      {STEPS.map((s) => (
-        <div key={s.n} className={'step' + (act > 0 && s.n < act ? ' done' : '') + (s.n === act ? ' on' : '')} aria-current={s.n === act ? 'step' : undefined}>
-          <div className="dot">{act > 0 && s.n < act ? '✓' : s.n}</div>{s.t}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export const Loading = () => <p className="empty">Memuat…</p>;
 
 export function Footer() {
@@ -66,7 +52,7 @@ export function Footer() {
       <div className="foot-in">
         <div><Logo /><p>Satu Sistem – Satu Data – Semua Terhubung.<br />Lebih teratur, akurat, dan terpercaya.</p></div>
         <div><h4>Menu</h4>
-          <Link to="/">Dashboard</Link><br /><Link to="/event">Event</Link><br /><Link to="/inventaris">Inventaris</Link><br /><Link to="/scan">Scan QR</Link></div>
+          <Link to="/event">Tugas</Link><br /><Link to="/inventaris">Inventaris</Link></div>
         <div><h4>Kantor</h4>TST INDONESIA<br />23rd floor, ANZ Tower<br />Jl. Jend. Sudirman kav. 33a<br />Jakarta, Indonesia<br /><a href="mailto:john@tstindonesia.id">john@tstindonesia.id</a></div>
         <div><h4>Hubungi kami</h4><a href="tel:+6281383777226">+62 81383777226</a><br /><a href="https://tstindonesia.id" target="_blank" rel="noreferrer">tstindonesia.id</a></div>
       </div>

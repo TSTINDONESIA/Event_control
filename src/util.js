@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ref, onValue, push, query, orderByChild, equalTo } from 'firebase/database';
 import { db } from './firebase.js';
+import { PRESET_NAMES } from './presets.js';
 
-export const overlap = (a, b) => a.mulai <= b.selesai && b.mulai <= a.selesai; // yyyy-mm-dd
 export const assetUrl = (id) => `${location.origin}${location.pathname}#/aset/${id}`;
 export const fmt = (t) => new Date(t).toLocaleString('id-ID');
 export const list = (o) => Object.entries(o || {}).map(([id, v]) => ({ id, ...v }));
@@ -32,9 +32,8 @@ export function useByChild(path, child, value, enabled = true) {
   return v;
 }
 
-// unit yang dialokasikan ke satu event
-export const unitsOf = (eid, bookings, assets) =>
-  (Array.isArray(assets) ? assets : list(assets)).filter((a) => bookings?.[a.id]?.[eid]);
+// daftar kategori yang sudah dipakai unit (untuk saran isian)
+export const katOptions = (assets) => [...new Set([...PRESET_NAMES, ...Object.values(assets || {}).map((a) => a.kategori).filter(Boolean)])].sort();
 
 export const audit = (uid, aksi, detail) =>
   push(ref(db, 'audit'), { uid, aksi, detail: String(detail || ''), waktu: Date.now() });
