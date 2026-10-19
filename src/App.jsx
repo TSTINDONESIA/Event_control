@@ -7,6 +7,7 @@ import Login from './pages/Login.jsx';
 import Events from './pages/Events.jsx';
 import EventDetail from './pages/EventDetail.jsx';
 import Inventory from './pages/Inventory.jsx';
+import Stok from './pages/Stok.jsx';
 import Asset from './pages/Asset.jsx';
 import Scan from './pages/Scan.jsx';
 import Report from './pages/Report.jsx';
@@ -18,6 +19,7 @@ import SuratJalan from './pages/SuratJalan.jsx';
 
 const TITLES = {
   '/event': ['Tugas', 'Event, teknisi, dan alat yang harus disiapkan.'],
+  '/stok': ['Stok gudang', 'Berapa alat stand by, keluar, dan rusak.'],
   '/inventaris': ['Inventaris', 'Stok alat, satu QR per unit.'],
   '/scan': ['Cek unit', 'Scan label untuk melihat status unit.'],
   '/laporan': ['Laporan', 'Pengiriman ke teknisi, kerusakan, dan stok.'],
@@ -55,6 +57,7 @@ export default function App() {
           <button className="burger" onClick={() => setOpen(!open)} aria-label="Menu" aria-expanded={open}>☰</button>
           <nav className="nav" onClick={(e) => e.target.closest('a') && close()}>
             <NavLink to="/event">Tugas</NavLink>
+            {staff && <NavLink to="/stok">Stok</NavLink>}
             {staff && <NavLink to="/inventaris">Inventaris</NavLink>}
             {role === 'admin' && <NavLink to="/laporan">Laporan</NavLink>}
             {role === 'admin' && <NavLink to="/pengguna">Pengguna</NavLink>}
@@ -77,6 +80,7 @@ export default function App() {
           <Route path="/event/:id" element={<EventDetail />} />
           <Route path="/surat-jalan/:id" element={<SuratJalan />} />
           <Route path="/password" element={<Password />} />
+          {staff && <Route path="/stok" element={<Stok />} />}
           {staff && <Route path="/inventaris" element={<Inventory />} />}
           {staff && <Route path="/aset/:id" element={<Asset />} />}
           {staff && <Route path="/scan" element={<Scan />} />}
