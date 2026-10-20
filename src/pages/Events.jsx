@@ -9,13 +9,14 @@ import { eventPdf, savePdf, fileName } from '../pdf.js';
 import Assign from '../Assign.jsx';
 import { Loading } from '../components.jsx';
 import { parseICS, gcalLink } from '../gcal.js';
-import { PRESET_NAMES, isKabel } from '../presets.js';
+import { rekap, permintaanText } from '../rekap.js';
 
 
 const CSS = `
 .ne-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;width:100%}
 .ne-grid label{display:block;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
-.ne-grid input{width:100%;margin-top:4px}
+.ne-grid input,.ne-grid input[type=date]{display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;margin-top:4px}
+.ne-grid label{min-width:0}
 .ne-box{width:100%;border-top:1px solid #e5e5e0;padding-top:10px;margin-top:4px}
 .ne-need{display:flex;gap:8px;margin-bottom:6px;width:100%}
 .ne-need input:first-child{flex:1;min-width:0}
@@ -40,24 +41,25 @@ const CSS = `
 }
 `;
 
-// Detail peralatan satu event: lipat ke bawah + unduh PDF
+// Detail peralatan satu event: teks kebutuhan dari admin + rekap disiapkan gudang, lipat ke bawah + unduh PDF
 function Detail({ e, units }) {
-  const kb = list(e.kebutuhan);
-  const siapOf = (k) => (isKabel(k.kategori) ? (k.siap || 0) : units.filter((u) => u.kategori === k.kategori).length);
+  const rows = rekap(units, list(e.tambahan));
+  const teks = permintaanText(e);
   const pdf = () => savePdf(eventPdf({
     nama: e.nama, lokasi: e.lokasi || '-', tanggal: range(e),
-    teknisi: Object.values(e.teknisi || {}).join(', ') || '-',
-    rows: kb.map((k) => ({ alat: k.kategori, minta: k.jumlah, siap: siapOf(k), ket: [k.grup, k.ket].filter(Boolean).join(' - ') })),
+    teknisi: Object.values(e.teknisi || {}).join(', ') || '-', permintaan: teks,
+    rows: rows.map((r) => ({ alat: r.nama, jumlah: r.jumlah })),
     units: units.map((u) => ({ kode: u.kode, nama: u.nama, kategori: u.kategori, status: STATUS[norm(u.status)]?.label || u.status })),
   }), `Peralatan-${fileName(e.nama)}.pdf`);
   return (
     <details className="kb">
-      <summary>Detail peralatan ({kb.length})</summary>
+      <summary>Detail peralatan</summary>
       <div className="kb-body">
-        {kb.length === 0 ? <p className="empty">Belum ada permintaan alat.</p> : kb.map((k) => (
-          <div className="kb-row" key={k.id}>
-            <span><b>{k.kategori}</b>{(k.grup || k.ket) && <small>{[k.grup, k.ket].filter(Boolean).join(' · ')}</small>}</span>
-            <span className="n"><b>{siapOf(k)}</b> / {k.jumlah}<i>disiapkan / diminta</i></span>
+        <p style={{ whiteSpace: 'pre-wrap' }}>{teks || <span className="empty">Admin belum mengisi kebutuhan alat.</span>}</p>
+        {rows.map((r) => (
+          <div className="kb-row" key={r.key}>
+            <span><b>{r.nama}</b></span>
+            <span className="n"><b>{r.jumlah}</b><i>disiapkan</i></span>
           </div>
         ))}
         {units.length > 0 && <p><small>{units.length} unit ber-QR sudah disiapkan / dikirim.</small></p>}
@@ -72,13 +74,12 @@ const empty = { nama: '', lokasi: '', mulai: '', selesai: '' };
 // Form event baru (admin): vendor, tanggal (manual / dari Google Calendar), kebutuhan alat, teknisi.
 function NewEvent({ users, profile, onMsg }) {
   const [f, setF] = useState(empty);
-  const [rows, setRows] = useState([{ kategori: '', jumlah: 1 }]);
+  const [teks, setTeks] = useState('');
   const [tek, setTek] = useState({});
   const [ics, setIcs] = useState([]);
   const [paste, setPaste] = useState('');
   const [busy, setBusy] = useState(false);
   const techs = list(users).filter((x) => x.role === 'teknisi' && x.aktif === true).sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
-  const setRow = (i, k, v) => setRows(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
 
   const loadIcs = (text) => {
     const found = parseICS(text);
@@ -95,18 +96,14 @@ function NewEvent({ users, profile, onMsg }) {
     setBusy(true);
     try {
       const key = push(ref(db, 'events')).key;
-      const merged = {};
-      rows.forEach((r) => { const k = r.kategori.trim(); if (k) merged[k] = (merged[k] || 0) + Math.max(1, parseInt(r.jumlah, 10) || 1); });
-      const kebutuhan = {};
-      Object.entries(merged).forEach(([kategori, jumlah]) => { kebutuhan[push(ref(db, `events/${key}/kebutuhan`)).key] = { kategori, jumlah, dari: 'admin' }; });
       const teknisi = Object.fromEntries(techs.filter((t) => tek[t.id]).map((t) => [t.id, t.nama]));
       await set(ref(db, 'events/' + key), {
         nama: f.nama.trim(), lokasi: f.lokasi.trim(), mulai: f.mulai, selesai: f.selesai, tahap: 'rencana',
         dibuat: Date.now(), dibuatOleh: profile.nama,
-        ...(Object.keys(kebutuhan).length ? { kebutuhan } : {}), ...(Object.keys(teknisi).length ? { teknisi } : {}),
+        ...(teks.trim() ? { kebutuhanTeks: teks.trim() } : {}), ...(Object.keys(teknisi).length ? { teknisi } : {}),
       });
       await audit(profile.uid, 'event_baru', f.nama);
-      setF(empty); setRows([{ kategori: '', jumlah: 1 }]); setTek({});
+      setF(empty); setTeks(''); setTek({});
     } catch (x) { onMsg(x.message); }
     setBusy(false);
   }
@@ -132,15 +129,7 @@ function NewEvent({ users, profile, onMsg }) {
       </details>
       <div className="ne-box">
         <b>Kebutuhan alat</b>
-        <datalist id="katNew">{PRESET_NAMES.map((k) => <option key={k} value={k} />)}</datalist>
-        {rows.map((r, i) => (
-          <div className="ne-need" key={i}>
-            <input list="katNew" aria-label="Nama alat" placeholder="Alat (mis. Booth, Receiver)" value={r.kategori} onChange={(e) => setRow(i, 'kategori', e.target.value)} />
-            <input type="number" min="1" aria-label="Jumlah" value={r.jumlah} onChange={(e) => setRow(i, 'jumlah', e.target.value)} style={{ width: 80 }} />
-            {rows.length > 1 && <button type="button" className="ghost" aria-label="Hapus baris" onClick={() => setRows(rows.filter((_, j) => j !== i))}>×</button>}
-          </div>
-        ))}
-        <button type="button" className="ghost" onClick={() => setRows([...rows, { kategori: '', jumlah: 1 }])}>+ Tambah alat</button>
+        <textarea rows="4" aria-label="Kebutuhan alat" placeholder="Tulis bebas, mis. 1 booth, 25 receiver" value={teks} onChange={(e) => setTeks(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', marginTop: 6 }} />
       </div>
       <div className="ne-box">
         <b>Teknisi</b>
