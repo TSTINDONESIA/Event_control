@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { PRESET } from './presets.js';
 
 // Isi jumlah per alat seperti di kertas checklist, lalu tambahkan sekaligus.
-export default function PresetPicker({ existing, onAdd, busy }) {
+export default function PresetPicker({ existing, onAdd, busy, only }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState({});
   const have = new Set(existing.map((k) => (k.grup || '') + '|' + k.kategori));
+  const groups = Object.entries(PRESET).map(([g, items]) => [g, only ? items.filter(only) : items]).filter(([, items]) => items.length);
   const picked = Object.entries(q).filter(([, v]) => parseInt(v, 10) > 0);
   async function submit() {
     await onAdd(picked.map(([key, v]) => { const [grup, nama] = key.split('|'); return { grup, kategori: nama, jumlah: parseInt(v, 10) }; }));
@@ -13,10 +14,10 @@ export default function PresetPicker({ existing, onAdd, busy }) {
   }
   return (
     <div className="card">
-      <button type="button" className="ghost" onClick={() => setOpen(!open)}>{open ? 'Tutup daftar alat' : 'Pilih dari daftar alat (seperti checklist kertas)'}</button>
+      <button type="button" className="ghost" onClick={() => setOpen(!open)}>{open ? 'Tutup daftar' : only ? 'Tambah kabel (tanpa barcode, isi jumlah manual)' : 'Pilih dari daftar alat (seperti checklist kertas)'}</button>
       {open && (
         <>
-          {Object.entries(PRESET).map(([grup, items]) => (
+          {groups.map(([grup, items]) => (
             <details key={grup} style={{ marginTop: 10 }}>
               <summary><b>{grup}</b></summary>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))', gap: '6px 16px', marginTop: 8 }}>
