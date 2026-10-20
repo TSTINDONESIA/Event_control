@@ -46,6 +46,7 @@ export default function EventDetail() {
   const [msg, setMsg] = useState('');
   const [ok, setOk] = useState('');
   const [busy, setBusy] = useState(false);
+  const [conf, setConf] = useState('');           // tombol yang menunggu ketukan konfirmasi
 
   if (raw === undefined || assets === undefined) return <div className="pad"><Loading /></div>;
   if (raw === null) return <div className="pad"><p>Event tidak ditemukan. <Link to="/event">Kembali</Link></p></div>;
@@ -65,12 +66,17 @@ export default function EventDetail() {
   const setSiap = (k, v) => run(() => set(ref(db, `events/${id}/kebutuhan/${k.id}/siap`), Math.max(0, parseInt(v, 10) || 0)));
   const isTek = !!ev.teknisi?.[profile.uid];
   const canTek = isTek || isAdmin;               // aksi teknisi (admin boleh menggantikan)
+  const kurang = kebutuhan.filter((k) => siapOf(k) < k.jumlah);
   const canEditKb = isGudang && tahap === 'rencana';
   const checked = (a) => !!cl?.[a.id]?.ok;
   const allChecked = sent.length > 0 && sent.every(checked);
 
+  // konfirmasi ketuk dua kali (confirm() bawaan browser sering diblokir di HP)
+  const tap = (key, fn) => () => { if (conf === key) { setConf(''); fn(); } else { setConf(key); setMsg(''); setOk(''); } };
+  const lbl = (key, text) => (conf === key ? 'Ketuk lagi untuk konfirmasi' : text);
+
   async function run(fn, okText) {
-    setBusy(true); setMsg(''); setOk('');
+    setConf(''); setBusy(true); setMsg(''); setOk('');
     try { await fn(); if (okText) setOk(okText); } catch (e) { setMsg(e.message); }
     setBusy(false);
   }
@@ -107,8 +113,6 @@ export default function EventDetail() {
 
   const doSudahSiap = () => run(async () => {
     if (siap.length === 0) throw new Error('Scan minimal satu alat dulu.');
-    const kurang = kebutuhan.filter((k) => siapOf(k) < k.jumlah);
-    if (kurang.length && !confirm(`${kurang.length} jenis alat masih kurang dari permintaan (${kurang.map((k) => k.kategori).join(', ')}). Tetap tandai “Sudah disiapkan”?`)) return;
     await selesaiSiapkan(ev, profile);
     setMode('');
   }, 'Penyiapan ditutup. Tekan “PDF Kirim ke teknisi”.');
@@ -116,7 +120,6 @@ export default function EventDetail() {
   const doBukaLagi = () => run(() => bukaPenyiapan(ev, profile), 'Penyiapan dibuka lagi.');
 
   const doKirim = () => run(async () => {
-    if (!confirm(`Kirim ${siap.length} unit ke teknisi dan buat PDF daftar alat?`)) return;
     const items = Object.fromEntries(kebutuhan.map((k) => [k.id, { nama: k.kategori, diminta: k.jumlah, disiapkan: siapOf(k) }]));
     const r = await kirim(siap, ev, profile, items);
     if (r.gagal.length) throw new Error(r.gagal.join(' '));
@@ -128,11 +131,9 @@ export default function EventDetail() {
   // ---- teknisi ----
   const toggle = (a, v) => run(() => set(ref(db, `checklist/${id}/${a.id}`), { ok: v, uid: profile.uid, nama: profile.nama, waktu: Date.now() }));
   const doTerima = () => run(async () => {
-    if (!confirm('Semua alat sudah dicek dan lengkap?')) return;
     await terimaTeknisi(ev, sent.length, profile);
   }, 'Alat lengkap diterima. Selamat bertugas.');
   const doKembalikan = () => run(async () => {
-    if (!confirm('Kembalikan semua alat ke gudang?')) return;
     await kembalikanKeGudang(ev, profile);
   }, 'Sudah dikembalikan. Gudang akan scan barang kembali.');
 
@@ -188,8 +189,9 @@ export default function EventDetail() {
                 <p><b>Gudang: siapkan alat.</b> Scan QR tiap alat, lalu tekan “Sudah disiapkan”.</p>
                 <div className="row">
                   <button className={'big' + (mode === 'siapkan' ? ' dark' : '')} onClick={() => setMode(mode === 'siapkan' ? '' : 'siapkan')}>{mode === 'siapkan' ? 'Selesai scan' : 'Siapkan (scan QR)'}</button>
-                  <button className="big" disabled={busy || siap.length === 0} onClick={doSudahSiap}>Sudah disiapkan ({siap.length})</button>
+                  <button className={'big' + (conf === 'siap' ? ' dark' : '')} disabled={busy || siap.length === 0} onClick={tap('siap', doSudahSiap)}>{lbl('siap', `Sudah disiapkan (${siap.length})`)}</button>
                 </div>
+                {conf === 'siap' && kurang.length > 0 && <p className="err"><small>Masih kurang dari permintaan: {kurang.map((k) => k.kategori).join(', ')}.</small></p>}
                 {mode === 'siapkan' && <><p><small>Alat yang di-scan masuk daftar “disiapkan”.</small></p><Scanner onScan={onScan} /></>}
               </div>
             )}
@@ -197,7 +199,7 @@ export default function EventDetail() {
               <div className="act">
                 <p><b>Penyiapan selesai ({siap.length} unit).</b> Kirim daftar alat ke teknisi lewat PDF.</p>
                 <div className="row">
-                  <button className="big" disabled={busy || siap.length === 0} onClick={doKirim}>PDF Kirim ke teknisi</button>
+                  <button className={'big' + (conf === 'kirim' ? ' dark' : '')} disabled={busy || siap.length === 0} onClick={tap('kirim', doKirim)}>{lbl('kirim', 'PDF Kirim ke teknisi')}</button>
                   <button className="ghost" disabled={busy} onClick={doBukaLagi}>Buka lagi penyiapan</button>
                 </div>
               </div>
@@ -230,14 +232,14 @@ export default function EventDetail() {
         {canTek && tahap === 'dikirim' && (
           <div className="act">
             <p><b>Cek alat yang dikirim gudang</b> (centang tiap unit di daftar bawah), lalu terima.</p>
-            <button className="big" disabled={busy || !allChecked} onClick={doTerima}>Alat lengkap diterima {sent.length > 0 ? `(${sent.filter(checked).length}/${sent.length})` : ''}</button>
+            <button className={'big' + (conf === 'terima' ? ' dark' : '')} disabled={busy || !allChecked} onClick={tap('terima', doTerima)}>{lbl('terima', `Alat lengkap diterima (${sent.filter(checked).length}/${sent.length})`)}</button>
             {!allChecked && <p><small>Tombol aktif setelah semua unit dicentang. Ada yang kurang? Hubungi gudang.</small></p>}
           </div>
         )}
         {canTek && tahap === 'diterima' && (
           <div className="act">
             <p><b>Event selesai?</b> Kembalikan semua alat ke gudang.</p>
-            <button className="big" disabled={busy} onClick={doKembalikan}>Kembalikan ke gudang</button>
+            <button className={'big' + (conf === 'kembali' ? ' dark' : '')} disabled={busy} onClick={tap('kembali', doKembalikan)}>{lbl('kembali', 'Kembalikan ke gudang')}</button>
           </div>
         )}
         {!isGudang && isTek && ['rencana', 'siap'].includes(tahap) && <div className="act"><p><b>Gudang sedang menyiapkan alat.</b> Daftar lengkap muncul setelah PDF dikirim.</p></div>}
