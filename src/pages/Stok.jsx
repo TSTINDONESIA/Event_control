@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useVal, list } from '../util.js';
 import { Badge, Loading } from '../components.jsx';
 import { norm } from './status.js';
+import { gudangOf } from '../presets.js';
 import { stokPdf, savePdf } from '../pdf.js';
 
 const CSS = `
@@ -35,6 +36,7 @@ export default function Stok() {
   const assets = useVal('assets');
   const events = useVal('events');
   const [q, setQ] = useState('');
+  const [gf, setGf] = useState('0');
   if (assets === undefined) return <Loading />;
 
   // unit "Tidak digunakan" (pensiun) tidak dihitung
@@ -46,7 +48,7 @@ export default function Stok() {
     r.total++; r[a.status] = (r[a.status] || 0) + 1; r.units.push(a);
   });
   const rows = Object.values(g).sort((a, b) => a.nama.localeCompare(b.nama));
-  const shown = rows.filter((r) => r.nama.toLowerCase().includes(q.toLowerCase()));
+  const shown = rows.filter((r) => r.nama.toLowerCase().includes(q.toLowerCase()) && (gf === '0' || gudangOf(r.nama) === Number(gf)));
   const sum = (k) => rows.reduce((n, r) => n + (r[k] || 0), 0);
   const tgl = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -61,6 +63,9 @@ export default function Stok() {
       </div>
       <div className="row" style={{ marginBottom: 14 }}>
         <input style={{ flex: 1, minWidth: 180 }} aria-label="Cari alat" placeholder="Cari alat (mis. Receiver)" value={q} onChange={(e) => setQ(e.target.value)} />
+        <select aria-label="Gudang" value={gf} onChange={(e) => setGf(e.target.value)}>
+          <option value="0">Semua gudang</option><option value="1">Gudang 1</option><option value="2">Gudang 2</option>
+        </select>
         <button onClick={() => savePdf(stokPdf(rows, tgl), 'Stok-Gudang.pdf')}>Download PDF</button>
       </div>
       {rows.length === 0 ? <p className="empty">Belum ada unit. Tambah unit di menu Inventaris.</p> : shown.length === 0 ? <p className="empty">Alat tidak ditemukan.</p> : shown.map((r) => (

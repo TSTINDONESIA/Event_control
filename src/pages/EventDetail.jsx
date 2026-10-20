@@ -4,13 +4,13 @@ import { ref, push, set, remove } from 'firebase/database';
 import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
 import { useVal, list, range, audit, fmt } from '../util.js';
-import { siapkan, batalSiapkan, kirim, terimaKembali, selesaikanEvent, selesaiSiapkan, bukaPenyiapan, terimaTeknisi, kembalikanKeGudang } from '../flow.js';
+import { siapkan, batalSiapkan, kirim, terimaKembali, selesaikanEvent, selesaiSiapkan, bukaPenyiapan, tutupGudang, bukaGudang, terimaTeknisi, kembalikanKeGudang } from '../flow.js';
 import { norm, TAHAP } from './status.js';
 import { kirimPdf, bagikanPdf, fileName } from '../pdf.js';
 import { Band, Badge, Loading } from '../components.jsx';
 import Assign from '../Assign.jsx';
 import Scanner, { findAsset } from '../Scanner.jsx';
-import { PRESET_NAMES, isKabel } from '../presets.js';
+import { PRESET_NAMES, isKabel, gudangOf } from '../presets.js';
 import { rekap, permintaanText } from '../rekap.js';
 
 const CSS = `
@@ -39,7 +39,7 @@ export default function EventDetail() {
   const serah = useVal('serahTerima/' + id);
   const cl = useVal('checklist/' + id);
   const users = useVal(isAdmin ? 'users' : 'users/' + profile.uid);
-  const [mode, setMode] = useState('');            // '' | 'siapkan' | 'kembali'
+  const [mode, setMode] = useState('');            // '' | 'siapkan1' | 'siapkan2' | 'kembali'
   const [rusak, setRusak] = useState(false);
   const [catatan, setCatatan] = useState('');
   const [need, setNeed] = useState({ kategori: '', jumlah: 1 });
@@ -57,6 +57,9 @@ export default function EventDetail() {
   const all = list(assets).map((a) => ({ ...a, status: norm(a.status) }));
   const siap = all.filter((a) => a.eventId === id && a.status === 'disiapkan').sort((a, b) => a.kode.localeCompare(b.kode));
   const dikirimIds = new Set(list(serah).flatMap((r) => (r.tipe === 'keluar' ? Object.keys(r.units || {}) : [])));
+  const sg = ev.siapGudang || {};
+  const siap1 = siap.filter((a) => gudangOf(a.kategori) === 1);
+  const siap2 = siap.filter((a) => gudangOf(a.kategori) === 2);
   const sent = all.filter((a) => dikirimIds.has(a.id)).sort((a, b) => a.kode.localeCompare(b.kode));
   const masihDiTeknisi = sent.filter((a) => a.status === 'keluar' && a.eventId === id);
   const sudahKembali = sent.filter((a) => !(a.status === 'keluar' && a.eventId === id));
@@ -86,15 +89,17 @@ export default function EventDetail() {
     if (!a) { setMsg('QR / kode tidak dikenali: ' + text); setOk(''); return; }
     setMsg(''); setOk('');
     try {
-      if (mode === 'siapkan') {
-        if (tahap !== 'rencana') throw new Error('Penyiapan sudah ditutup.');
+      if (mode.startsWith('siapkan')) {
+        const g = Number(mode.slice(7));
+        if (tahap !== 'rencana' || sg['g' + g]) throw new Error(`Penyiapan Gudang ${g} sudah ditutup.`);
+        if (gudangOf(a.kategori) !== g && !isAdmin) throw new Error(`${a.kode} milik Gudang ${gudangOf(a.kategori)}. Scan oleh petugas Gudang ${gudangOf(a.kategori)}.`);
         await siapkan(a, ev, profile);
-        setOk(`✓ ${a.kode} ${a.nama} siap.`);
+        setOk(`✓ ${a.kode} ${a.nama} siap (Gudang ${gudangOf(a.kategori)}).`);
       } else if (mode === 'kembali') {
         if (tahap !== 'kembali') throw new Error('Teknisi belum menekan “Kembalikan ke gudang”.');
         if (norm(a.status) !== 'keluar' || a.eventId !== id) throw new Error(`${a.kode} tidak sedang dikirim untuk event ini.`);
         await terimaKembali(a, ev, profile, { rusak, catatan });
-        setOk(`✓ ${a.kode} ${a.nama} kembali ke stok${rusak ? ' (rusak, dicatat ke laporan)' : ''}.`);
+        setOk(`✓ ${a.kode} ${a.nama} kembali ke stok${rusak ? ' (rusak, dicatat ke laporan)' : ''}. Simpan di Gudang ${gudangOf(a.kategori)}.`);
         setRusak(false); setCatatan('');
         if (masihDiTeknisi.length === 1) { await selesaikanEvent(ev, profile); setMode(''); }
       }
@@ -106,16 +111,18 @@ export default function EventDetail() {
     nama: ev.nama, lokasi: ev.lokasi || '-', tanggal: range(ev),
     teknisi: Object.values(ev.teknisi || {}).join(', ') || '-',
     gudang: oleh || profile.nama, waktu: fmt(waktu || Date.now()),
-    permintaan, rows: rows.map((r) => ({ alat: r.nama, jumlah: r.jumlah })),
-    units: units.map((u) => ({ kode: u.kode, nama: u.nama, kategori: u.kategori })),
+    permintaan, rows: rows.map((r) => ({ alat: r.nama + (!r.manual && gudangOf(r.nama) === 2 ? ' (Gudang 2)' : ''), jumlah: r.jumlah })),
+    units: units.map((u) => ({ kode: u.kode, nama: u.nama, kategori: (u.kategori || '') + (gudangOf(u.kategori) === 2 ? ' (Gudang 2)' : '') })),
   });
   const pdfName = `Kirim-${fileName(ev.nama)}.pdf`;
 
-  const doSudahSiap = () => run(async () => {
-    if (siap.length === 0) throw new Error('Scan minimal satu alat dulu.');
-    await selesaiSiapkan(ev, profile);
+  const doTutup = (g) => run(async () => {
+    const mine = g === 1 ? siap1 : siap2;
+    const other = sg['g' + (3 - g)];
+    if (other && siap.length === 0) throw new Error('Belum ada alat yang disiapkan di kedua gudang.');
+    await tutupGudang(ev, g, mine.length, !!other, profile);
     setMode('');
-  }, 'Penyiapan ditutup. Tekan “PDF Kirim ke teknisi”.');
+  }, g === 2 ? 'Gudang 2 sudah menyerahkan.' : 'Gudang 1 selesai menyiapkan.');
 
   const doBukaLagi = () => run(() => bukaPenyiapan(ev, profile), 'Penyiapan dibuka lagi.');
 
@@ -151,7 +158,7 @@ export default function EventDetail() {
   const t = TAHAP[tahap] || TAHAP.rencana;
   const steps = [
     ['Event dibuat admin', true, ev.dibuatOleh ? `${ev.dibuatOleh}${ev.dibuat ? ' · ' + fmt(ev.dibuat) : ''}` : ''],
-    ['Gudang menyiapkan & kirim PDF ke teknisi', at >= 2, ev.dikirimWaktu ? `${ev.dikirimOleh || ''} · ${fmt(ev.dikirimWaktu)}` : at === 1 ? 'Sudah disiapkan, tinggal kirim PDF' : ''],
+    ['Gudang menyiapkan & kirim PDF ke teknisi', at >= 2, ev.dikirimWaktu ? `${ev.dikirimOleh || ''} · ${fmt(ev.dikirimWaktu)}` : at === 1 ? 'Sudah disiapkan, tinggal kirim PDF' : at === 0 ? `Gudang 1: ${sg.g1 ? 'selesai' : 'belum'} · Gudang 2: ${sg.g2 ? 'selesai' : 'belum'}` : ''],
     ['Teknisi: alat lengkap diterima', at >= 3, ev.diterimaWaktu ? `${ev.diterimaOleh || ''} · ${fmt(ev.diterimaWaktu)}` : ''],
     ['Teknisi: kembalikan ke gudang', at >= 4, ev.kembaliWaktu ? `${ev.kembaliOleh || ''} · ${fmt(ev.kembaliWaktu)}` : ''],
     ['Gudang: scan barang kembali, masuk stok', at >= 5, ev.selesaiWaktu ? fmt(ev.selesaiWaktu) : at === 4 ? `${masihDiTeknisi.length} unit belum di-scan` : ''],
@@ -180,19 +187,26 @@ export default function EventDetail() {
         {/* ===== Aksi gudang ===== */}
         {isGudang && (
           <>
-            {tahap === 'rencana' && (
-              <div className="act">
-                <p><b>Gudang: siapkan alat.</b> Scan QR tiap alat, lalu tekan “Sudah disiapkan”.</p>
-                <div className="row">
-                  <button className={'big' + (mode === 'siapkan' ? ' dark' : '')} onClick={() => setMode(mode === 'siapkan' ? '' : 'siapkan')}>{mode === 'siapkan' ? 'Selesai scan' : 'Siapkan (scan QR)'}</button>
-                  <button className={'big' + (conf === 'siap' ? ' dark' : '')} disabled={busy || siap.length === 0} onClick={tap('siap', doSudahSiap)}>{lbl('siap', `Sudah disiapkan (${siap.length})`)}</button>
+            {tahap === 'rencana' && [1, 2].map((g) => {
+              const mine = g === 1 ? siap1 : siap2; const closed = sg['g' + g]; const m = 'siapkan' + g;
+              return (
+                <div className="act" key={g}>
+                  <p><b>Gudang {g}{g === 2 ? ' (Receiver, Headset, Laptop)' : ''}.</b> {closed ? `Sudah ${g === 2 ? 'diserahkan' : 'disiapkan'} oleh ${closed.oleh} (${closed.jumlah} unit).` : 'Scan QR alat dari gudang ini, lalu tutup.'}</p>
+                  {closed ? <button className="ghost" disabled={busy} onClick={() => run(() => bukaGudang(ev, g, profile))}>Buka lagi Gudang {g}</button> : (
+                    <>
+                      <div className="row">
+                        <button className={'big' + (mode === m ? ' dark' : '')} onClick={() => setMode(mode === m ? '' : m)}>{mode === m ? 'Selesai scan' : `Scan Gudang ${g}`}</button>
+                        <button className={'big' + (conf === 'tutup' + g ? ' dark' : '')} disabled={busy || (g === 1 && mine.length === 0 && siap.length === 0)} onClick={tap('tutup' + g, () => doTutup(g))}>{lbl('tutup' + g, mine.length === 0 ? `Tidak ada barang Gudang ${g}` : `Sudah disiapkan${g === 2 ? ' & diserahkan' : ''} (${mine.length})`)}</button>
+                      </div>
+                      {mode === m && <><p><small>Alat yang di-scan masuk daftar “disiapkan”.</small></p><Scanner onScan={onScan} /></>}
+                    </>
+                  )}
                 </div>
-                {mode === 'siapkan' && <><p><small>Alat yang di-scan masuk daftar “disiapkan”.</small></p><Scanner onScan={onScan} /></>}
-              </div>
-            )}
+              );
+            })}
             {tahap === 'siap' && (
               <div className="act">
-                <p><b>Penyiapan selesai ({siap.length} unit).</b> Kirim daftar alat ke teknisi lewat PDF.</p>
+                <p><b>Penyiapan selesai ({siap.length} unit; Gudang 1: {siap1.length}, Gudang 2: {siap2.length}).</b> Kirim daftar alat ke teknisi lewat PDF.{sg.g2 && <small> Gudang 2 diserahkan oleh {sg.g2.oleh} · {fmt(sg.g2.waktu)}.</small>}</p>
                 <div className="row">
                   <button className={'big' + (conf === 'kirim' ? ' dark' : '')} disabled={busy || siap.length === 0} onClick={tap('kirim', doKirim)}>{lbl('kirim', 'PDF Kirim ke teknisi')}</button>
                   <button className="ghost" disabled={busy} onClick={doBukaLagi}>Buka lagi penyiapan</button>
@@ -206,7 +220,7 @@ export default function EventDetail() {
             {tahap === 'diterima' && <div className="act"><p><b>Alat sedang bersama teknisi.</b> Menunggu teknisi menekan “Kembalikan ke gudang”.</p></div>}
             {tahap === 'kembali' && (
               <div className="act">
-                <p><b>Teknisi sudah mengembalikan.</b> Scan setiap alat yang kembali ({masihDiTeknisi.length} belum di-scan).</p>
+                <p><b>Teknisi sudah mengembalikan.</b> Scan setiap alat yang kembali ({masihDiTeknisi.length} belum di-scan; Gudang 1: {masihDiTeknisi.filter((a) => gudangOf(a.kategori) === 1).length}, Gudang 2: {masihDiTeknisi.filter((a) => gudangOf(a.kategori) === 2).length}).</p>
                 {masihDiTeknisi.length > 0 && <button className={'big' + (mode === 'kembali' ? ' dark' : '')} onClick={() => setMode(mode === 'kembali' ? '' : 'kembali')}>{mode === 'kembali' ? 'Selesai scan' : 'Scan barang kembali'}</button>}
                 {mode === 'kembali' && (
                   <>
@@ -274,7 +288,7 @@ export default function EventDetail() {
         {rows.length === 0 ? <p className="empty">Belum ada alat yang disiapkan.</p> : (
           <div className="tbl"><table><thead><tr><th>Alat</th><th>Jumlah</th><th></th></tr></thead>
             <tbody>{rows.map((r) => (
-              <tr key={r.key}><td>{r.nama}<small>{r.manual ? ' · manual' : ' · scan QR'}</small></td><td>{r.jumlah}</td>
+              <tr key={r.key}><td>{r.nama}<small>{r.manual ? ' · manual' : ' · scan QR'}{!r.manual && gudangOf(r.nama) === 2 ? ' · Gudang 2' : ''}</small></td><td>{r.jumlah}</td>
                 <td>{canEditKb && r.manual && <button className="danger" disabled={busy} onClick={() => run(() => remove(ref(db, `events/${id}/tambahan/${r.id}`)))}>Hapus</button>}</td></tr>
             ))}</tbody></table></div>
         )}
@@ -284,7 +298,7 @@ export default function EventDetail() {
             <h2>Disiapkan gudang ({siap.length})</h2>
             <div className="tbl"><table><thead><tr><th>Unit</th><th>Nama</th><th>Kategori</th>{isGudang && tahap === 'rencana' && <th></th>}</tr></thead>
               <tbody>{siap.map((u) => (
-                <tr key={u.id}><td><Link to={'/aset/' + u.id}>{u.kode}</Link></td><td>{u.nama}</td><td>{u.kategori || '-'}</td>
+                <tr key={u.id}><td><Link to={'/aset/' + u.id}>{u.kode}</Link></td><td>{u.nama}</td><td>{u.kategori || '-'}{gudangOf(u.kategori) === 2 && <small> · Gudang 2</small>}</td>
                   {isGudang && tahap === 'rencana' && <td><button className="ghost" disabled={busy} onClick={() => run(() => batalSiapkan(u, ev, profile))}>Batal</button></td>}</tr>
               ))}</tbody></table></div>
           </>
@@ -296,7 +310,7 @@ export default function EventDetail() {
             <h2>Alat yang dikirim ke teknisi ({sent.length})</h2>
             <div className="tbl"><table><thead><tr><th>Unit</th><th>Nama</th><th>Kategori</th><th>Status</th>{canTek && tahap === 'dikirim' && <th>Dicek</th>}</tr></thead>
               <tbody>{sent.map((u) => (
-                <tr key={u.id}><td><Link to={'/aset/' + u.id}>{u.kode}</Link></td><td>{u.nama}</td><td>{u.kategori || '-'}</td>
+                <tr key={u.id}><td><Link to={'/aset/' + u.id}>{u.kode}</Link></td><td>{u.nama}</td><td>{u.kategori || '-'}{gudangOf(u.kategori) === 2 && <small> · Gudang 2</small>}</td>
                   <td>{u.status === 'keluar' && u.eventId === id ? <Badge s="keluar" /> : <><Badge s={u.status} /> <small>kembali</small></>}</td>
                   {canTek && tahap === 'dikirim' && <td><input type="checkbox" aria-label={'Cek ' + u.kode} disabled={busy} checked={checked(u)} onChange={(e) => toggle(u, e.target.checked)} /></td>}</tr>
               ))}</tbody></table></div>
