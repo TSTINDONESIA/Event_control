@@ -78,3 +78,19 @@ Status lain: `hilang`, `pensiun`. Data lama aman: `rusak` ditampilkan sebagai "S
     firebase deploy --only database
 
 (aturan baru mengizinkan teknisi mengonfirmasi langkah 5–7 untuk event yang ditugaskan, dan warehouse mengelola event).
+
+---
+
+## Alur 5 langkah (Okt 2026)
+
+1. **Admin** membuat event: vendor, tanggal (manual atau dari file .ics Google Calendar), kebutuhan alat (mis. 1 Booth, 25 Receiver), dan memilih teknisi.
+2. **Gudang** melihat tugas yang sama, scan QR tiap alat, tekan **Sudah disiapkan**, lalu **PDF Kirim ke teknisi** (unit berstatus *Di teknisi*, PDF bisa dibagikan ke WhatsApp).
+3. **Teknisi** melihat jadwal dan daftar alat dari gudang, mencentang tiap unit, lalu tekan **Alat lengkap diterima**.
+4. Setelah event, teknisi tekan **Kembalikan ke gudang**.
+5. **Gudang** tekan **Scan barang kembali**; unit masuk stok lagi (rusak -> Servis). Event otomatis *Selesai* saat unit terakhir di-scan.
+
+Tahap event: `rencana` -> `siap` -> `dikirim` -> `diterima` -> `kembali` -> `selesai`.
+
+**WAJIB setelah deploy:** publish ulang `database.rules.json` (teknisi kini boleh mengubah tahap event yang ditugaskan: dikirim -> diterima -> kembali).
+
+Catatan: sinkron langsung Google Calendar (API) belum ada karena butuh OAuth; saat ini impor lewat file .ics dan tombol "+ Google Calendar" per event.

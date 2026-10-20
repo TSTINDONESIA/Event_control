@@ -31,7 +31,23 @@
       ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
       "$id": {
         ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
-        ".validate": "newData.hasChildren(['nama','mulai','selesai'])"
+        ".validate": "newData.hasChildren(['nama','mulai','selesai'])",
+        "tahap": {
+          ".write": "root.child('users/'+auth.uid+'/aktif').val()===true&&root.child('events/'+$id+'/teknisi/'+auth.uid).exists()&&((data.val()==='dikirim'&&newData.val()==='diterima')||(data.val()==='diterima'&&newData.val()==='kembali'))",
+          ".validate": "newData.val().matches(/^(rencana|siap|dikirim|diterima|kembali|selesai)$/)"
+        },
+        "diterimaWaktu": {
+          ".write": "root.child('users/'+auth.uid+'/aktif').val()===true&&root.child('events/'+$id+'/teknisi/'+auth.uid).exists()"
+        },
+        "diterimaOleh": {
+          ".write": "root.child('users/'+auth.uid+'/aktif').val()===true&&root.child('events/'+$id+'/teknisi/'+auth.uid).exists()"
+        },
+        "kembaliWaktu": {
+          ".write": "root.child('users/'+auth.uid+'/aktif').val()===true&&root.child('events/'+$id+'/teknisi/'+auth.uid).exists()"
+        },
+        "kembaliOleh": {
+          ".write": "root.child('users/'+auth.uid+'/aktif').val()===true&&root.child('events/'+$id+'/teknisi/'+auth.uid).exists()"
+        }
       }
     },
     "assetBookings": {
