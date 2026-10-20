@@ -9,3 +9,7 @@ export const PRESET_NAMES = [...new Set(Object.values(PRESET).flat())];
 
 // Kabel tidak punya barcode: jumlah disiapkan diisi manual. Alat lain dihitung otomatis dari scan QR.
 export const isKabel = (n) => /kabel|cable/i.test(String(n || ''));
+
+// Gudang 2 menyimpan receiver, headset, dan laptop (menurut kategori unit). Tambah kata lain di sini bila perlu.
+export const GUDANG2 = /receiver|headset|laptop/i;
+export const gudangOf = (kategori) => (GUDANG2.test(String(kategori || '')) ? 2 : 1);

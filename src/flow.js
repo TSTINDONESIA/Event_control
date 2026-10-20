@@ -100,8 +100,33 @@ export async function bukaPenyiapan(ev, profile) {
     [`events/${ev.id}/tahap`]: 'rencana',
     [`events/${ev.id}/siapWaktu`]: null,
     [`events/${ev.id}/siapOleh`]: null,
+    [`events/${ev.id}/siapGudang`]: null,
   });
   audit(profile.uid, 'event_buka_siap', ev.nama).catch(() => {});
+}
+
+// Tutup penyiapan satu gudang (g = 1 atau 2). Gudang 2 = serah ke Gudang 1.
+// final = gudang lain sudah menutup -> event masuk tahap "siap".
+export async function tutupGudang(ev, g, jumlah, final, profile) {
+  const up = { [`events/${ev.id}/siapGudang/g${g}`]: { waktu: Date.now(), oleh: profile.nama, jumlah } };
+  if (final) {
+    up[`events/${ev.id}/tahap`] = 'siap';
+    up[`events/${ev.id}/siapWaktu`] = Date.now();
+    up[`events/${ev.id}/siapOleh`] = profile.nama;
+  }
+  await update(ref(db), up);
+  audit(profile.uid, 'gudang_tutup', `${ev.nama}: Gudang ${g}, ${jumlah} unit`).catch(() => {});
+}
+
+// Buka lagi penyiapan satu gudang (selama belum dikirim)
+export async function bukaGudang(ev, g, profile) {
+  await update(ref(db), {
+    [`events/${ev.id}/siapGudang/g${g}`]: null,
+    [`events/${ev.id}/tahap`]: 'rencana',
+    [`events/${ev.id}/siapWaktu`]: null,
+    [`events/${ev.id}/siapOleh`]: null,
+  });
+  audit(profile.uid, 'gudang_buka', `${ev.nama}: Gudang ${g}`).catch(() => {});
 }
 
 // Teknisi: "Alat lengkap diterima" (dikirim -> diterima)
