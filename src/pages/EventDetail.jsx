@@ -9,7 +9,7 @@ import { norm, TAHAP } from './status.js';
 import { kirimPdf, bagikanPdf, fileName } from '../pdf.js';
 import { Band, Badge, Loading } from '../components.jsx';
 import Assign from '../Assign.jsx';
-import Scanner, { findAsset } from '../Scanner.jsx';
+import Scanner, { findAsset, unlockBeep } from '../Scanner.jsx';
 import { PRESET_NAMES, isKabel, gudangOf } from '../presets.js';
 import { rekap, permintaanText } from '../rekap.js';
 
@@ -84,26 +84,34 @@ export default function EventDetail() {
     setBusy(false);
   }
 
-  async function onScan(text) {
+  // 1) cek hasil scan (dipanggil saat QR terbaca): lempar Error bila unit tidak cocok; kembalikan info untuk konfirmasi
+  async function cekScan(text) {
     const a = findAsset(assets, text);
-    if (!a) { setMsg('QR / kode tidak dikenali: ' + text); setOk(''); return; }
+    if (!a) throw new Error('QR / kode tidak dikenali: ' + text);
     setMsg(''); setOk('');
-    try {
-      if (mode.startsWith('siapkan')) {
-        const g = Number(mode.slice(7));
-        if (tahap !== 'rencana' || sg['g' + g]) throw new Error(`Penyiapan Gudang ${g} sudah ditutup.`);
-        if (gudangOf(a.kategori) !== g && !isAdmin) throw new Error(`${a.kode} milik Gudang ${gudangOf(a.kategori)}. Scan oleh petugas Gudang ${gudangOf(a.kategori)}.`);
-        await siapkan(a, ev, profile);
-        setOk(`✓ ${a.kode} ${a.nama} siap (Gudang ${gudangOf(a.kategori)}).`);
-      } else if (mode === 'kembali') {
-        if (tahap !== 'kembali') throw new Error('Teknisi belum menekan “Kembalikan ke gudang”.');
-        if (norm(a.status) !== 'keluar' || a.eventId !== id) throw new Error(`${a.kode} tidak sedang dikirim untuk event ini.`);
-        await terimaKembali(a, ev, profile, { rusak, catatan });
-        setOk(`✓ ${a.kode} ${a.nama} kembali ke stok${rusak ? ' (rusak, dicatat ke laporan)' : ''}. Simpan di Gudang ${gudangOf(a.kategori)}.`);
-        setRusak(false); setCatatan('');
-        if (masihDiTeknisi.length === 1) { await selesaikanEvent(ev, profile); setMode(''); }
-      }
-    } catch (e) { setMsg(e.message); }
+    if (mode.startsWith('siapkan')) {
+      const g = Number(mode.slice(7));
+      if (tahap !== 'rencana' || sg['g' + g]) throw new Error(`Penyiapan Gudang ${g} sudah ditutup.`);
+      if (gudangOf(a.kategori) !== g && !isAdmin) throw new Error(`${a.kode} milik Gudang ${gudangOf(a.kategori)}. Scan oleh petugas Gudang ${gudangOf(a.kategori)}.`);
+      if (norm(a.status) !== 'tersedia') throw new Error(`${a.kode} tidak bisa disiapkan: status “${norm(a.status)}”${a.eventId && a.eventId !== id ? ' (dipakai event lain)' : a.eventId === id ? ' (sudah di event ini)' : ''}.`);
+    } else if (mode === 'kembali') {
+      if (tahap !== 'kembali') throw new Error('Teknisi belum menekan “Kembalikan ke gudang”.');
+      if (norm(a.status) !== 'keluar' || a.eventId !== id) throw new Error(`${a.kode} tidak sedang dikirim untuk event ini.`);
+    } else throw new Error('Pilih Scan Gudang dulu.');
+    return { title: a.nama || a.kode, sub: `${a.kode} · ${a.kategori || '-'} · Gudang ${gudangOf(a.kategori)}`, data: a };
+  }
+
+  // 2) tombol Input: simpan
+  async function prosesScan(a) {
+    if (mode.startsWith('siapkan')) {
+      await siapkan(a, ev, profile);
+      setOk(`✓ ${a.kode} ${a.nama} siap (Gudang ${gudangOf(a.kategori)}).`);
+    } else if (mode === 'kembali') {
+      await terimaKembali(a, ev, profile, { rusak, catatan });
+      setOk(`✓ ${a.kode} ${a.nama} kembali ke stok${rusak ? ' (rusak, dicatat ke laporan)' : ''}. Simpan di Gudang ${gudangOf(a.kategori)}.`);
+      setRusak(false); setCatatan('');
+      if (masihDiTeknisi.length === 1) { await selesaikanEvent(ev, profile); setMode(''); }
+    }
   }
 
   // ---- gudang ----
@@ -195,10 +203,10 @@ export default function EventDetail() {
                   {closed ? <button className="ghost" disabled={busy} onClick={() => run(() => bukaGudang(ev, g, profile))}>Buka lagi Gudang {g}</button> : (
                     <>
                       <div className="row">
-                        <button className={'big' + (mode === m ? ' dark' : '')} onClick={() => setMode(mode === m ? '' : m)}>{mode === m ? 'Selesai scan' : `Scan Gudang ${g}`}</button>
+                        <button className={'big' + (mode === m ? ' dark' : '')} onClick={() => { unlockBeep(); setMode(mode === m ? '' : m); }}>{mode === m ? 'Selesai scan' : `Scan Gudang ${g}`}</button>
                         <button className={'big' + (conf === 'tutup' + g ? ' dark' : '')} disabled={busy || (g === 1 && mine.length === 0 && siap.length === 0)} onClick={tap('tutup' + g, () => doTutup(g))}>{lbl('tutup' + g, mine.length === 0 ? `Tidak ada barang Gudang ${g}` : `Sudah disiapkan${g === 2 ? ' & diserahkan' : ''} (${mine.length})`)}</button>
                       </div>
-                      {mode === m && <><p><small>Alat yang di-scan masuk daftar “disiapkan”.</small></p><Scanner onScan={onScan} /></>}
+                      {mode === m && <><Scanner check={cekScan} onConfirm={prosesScan} /></>}
                     </>
                   )}
                 </div>
@@ -221,14 +229,14 @@ export default function EventDetail() {
             {tahap === 'kembali' && (
               <div className="act">
                 <p><b>Teknisi sudah mengembalikan.</b> Scan setiap alat yang kembali ({masihDiTeknisi.length} belum di-scan; Gudang 1: {masihDiTeknisi.filter((a) => gudangOf(a.kategori) === 1).length}, Gudang 2: {masihDiTeknisi.filter((a) => gudangOf(a.kategori) === 2).length}).</p>
-                {masihDiTeknisi.length > 0 && <button className={'big' + (mode === 'kembali' ? ' dark' : '')} onClick={() => setMode(mode === 'kembali' ? '' : 'kembali')}>{mode === 'kembali' ? 'Selesai scan' : 'Scan barang kembali'}</button>}
+                {masihDiTeknisi.length > 0 && <button className={'big' + (mode === 'kembali' ? ' dark' : '')} onClick={() => { unlockBeep(); setMode(mode === 'kembali' ? '' : 'kembali'); }}>{mode === 'kembali' ? 'Selesai scan' : 'Scan barang kembali'}</button>}
                 {mode === 'kembali' && (
                   <>
                     <div className="card row">
                       <label><input type="checkbox" checked={rusak} onChange={(e) => setRusak(e.target.checked)} /> Alat berikutnya rusak</label>
                       {rusak && <input aria-label="Catatan kerusakan" placeholder="Catatan kerusakan" value={catatan} onChange={(e) => setCatatan(e.target.value)} style={{ flex: 1 }} />}
                     </div>
-                    <Scanner onScan={onScan} />
+                    <Scanner check={cekScan} onConfirm={prosesScan} />
                   </>
                 )}
                 {masihDiTeknisi.length === 0 && <button disabled={busy} onClick={() => run(() => selesaikanEvent(ev, profile), 'Event selesai.')}>Tandai event selesai</button>}
