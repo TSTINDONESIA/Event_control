@@ -9,7 +9,7 @@ import { eventPdf, savePdf, fileName } from '../pdf.js';
 import Assign from '../Assign.jsx';
 import { Loading } from '../components.jsx';
 import { parseICS, gcalLink } from '../gcal.js';
-import { PRESET_NAMES } from '../presets.js';
+import { PRESET_NAMES, isKabel } from '../presets.js';
 
 
 const CSS = `
@@ -43,7 +43,7 @@ const CSS = `
 // Detail peralatan satu event: lipat ke bawah + unduh PDF
 function Detail({ e, units }) {
   const kb = list(e.kebutuhan);
-  const siapOf = (k) => { const n = units.filter((u) => u.kategori === k.kategori).length; return n > 0 ? n : (k.siap || 0); };
+  const siapOf = (k) => (isKabel(k.kategori) ? (k.siap || 0) : units.filter((u) => u.kategori === k.kategori).length);
   const pdf = () => savePdf(eventPdf({
     nama: e.nama, lokasi: e.lokasi || '-', tanggal: range(e),
     teknisi: Object.values(e.teknisi || {}).join(', ') || '-',

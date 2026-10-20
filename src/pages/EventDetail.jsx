@@ -11,7 +11,7 @@ import { Band, Badge, Loading } from '../components.jsx';
 import Assign from '../Assign.jsx';
 import Scanner, { findAsset } from '../Scanner.jsx';
 import PresetPicker from '../PresetPicker.jsx';
-import { PRESET_NAMES } from '../presets.js';
+import { PRESET_NAMES, isKabel } from '../presets.js';
 
 const CSS = `
 .stp{list-style:none;margin:0 0 16px;padding:0;border:2px solid #000;background:#fff}
@@ -61,8 +61,15 @@ export default function EventDetail() {
   const sudahKembali = sent.filter((a) => !(a.status === 'keluar' && a.eventId === id));
   const kebutuhan = list(ev.kebutuhan);
   const planned = [...siap, ...masihDiTeknisi];
-  // jumlah siap per baris: hitung dari unit ber-QR; bila tidak ada unit QR, pakai angka yang diisi gudang
-  const siapOf = (k) => { const n = planned.concat(sudahKembali).filter((u) => u.kategori === k.kategori).length; return n > 0 ? n : (k.siap || 0); };
+  // Jumlah disiapkan: otomatis dari unit yang di-scan (menurut kategori unit). Kabel tanpa barcode: diisi manual gudang.
+  const kk = (s) => String(s || '').trim().toLowerCase();
+  const katOf = (u) => (u.kategori || '').trim() || 'Tanpa kategori';
+  const scanned = planned.concat(sudahKembali);
+  const qrCount = (kat) => scanned.filter((u) => kk(katOf(u)) === kk(kat)).length;
+  const siapOf = (k) => (isKabel(k.kategori) ? (k.siap || 0) : qrCount(k.kategori));
+  // kategori hasil scan yang belum ada di permintaan muncul otomatis sebagai baris
+  const rows = [...kebutuhan, ...[...new Set(scanned.map(katOf))].filter((c) => !kebutuhan.some((k) => kk(k.kategori) === kk(c)))
+    .map((c) => ({ id: 'auto-' + c, kategori: c, jumlah: 0, auto: true }))];
   const setSiap = (k, v) => run(() => set(ref(db, `events/${id}/kebutuhan/${k.id}/siap`), Math.max(0, parseInt(v, 10) || 0)));
   const isTek = !!ev.teknisi?.[profile.uid];
   const canTek = isTek || isAdmin;               // aksi teknisi (admin boleh menggantikan)
@@ -106,7 +113,7 @@ export default function EventDetail() {
     nama: ev.nama, lokasi: ev.lokasi || '-', tanggal: range(ev),
     teknisi: Object.values(ev.teknisi || {}).join(', ') || '-',
     gudang: oleh || profile.nama, waktu: fmt(waktu || Date.now()),
-    rows: kebutuhan.map((k) => ({ alat: k.kategori, minta: k.jumlah, siap: siapOf(k), ket: [k.grup, k.ket].filter(Boolean).join(' - ') })),
+    rows: rows.map((k) => ({ alat: k.kategori, minta: k.auto ? '-' : k.jumlah, siap: siapOf(k), ket: [k.grup, k.ket].filter(Boolean).join(' - ') })),
     units: units.map((u) => ({ kode: u.kode, nama: u.nama, kategori: u.kategori })),
   });
   const pdfName = `Kirim-${fileName(ev.nama)}.pdf`;
@@ -120,7 +127,7 @@ export default function EventDetail() {
   const doBukaLagi = () => run(() => bukaPenyiapan(ev, profile), 'Penyiapan dibuka lagi.');
 
   const doKirim = () => run(async () => {
-    const items = Object.fromEntries(kebutuhan.map((k) => [k.id, { nama: k.kategori, diminta: k.jumlah, disiapkan: siapOf(k) }]));
+    const items = Object.fromEntries(rows.map((k) => [k.id.replace(/[.#$/\[\]]/g, '_'), { nama: k.kategori, diminta: k.jumlah, disiapkan: siapOf(k) }]));
     const r = await kirim(siap, ev, profile, items);
     if (r.gagal.length) throw new Error(r.gagal.join(' '));
     await bagikanPdf(buatPdf(r.ok, Date.now(), profile.nama), pdfName, 'Alat ' + ev.nama);
@@ -252,7 +259,7 @@ export default function EventDetail() {
         </div>
 
         <h2>Permintaan alat</h2>
-        <p><small>Diisi admin saat membuat event. Gudang menambah / menyesuaikan jumlah saat menyiapkan.</small></p>
+        <p><small>Kolom “Disiapkan” terisi otomatis dari alat yang di-scan. Kabel tidak punya barcode, jadi jumlahnya diisi manual oleh gudang.</small></p>
         {canEditKb && (
           <form className="card row" onSubmit={addNeed}>
             <input list="katN" aria-label="Nama alat / kategori" placeholder="Nama alat / kategori (mis. Receiver)" value={need.kategori} onChange={(e) => setNeed({ ...need, kategori: e.target.value })} required />
@@ -261,16 +268,17 @@ export default function EventDetail() {
             <button disabled={busy}>Tambah</button>
           </form>
         )}
-        {canEditKb && <PresetPicker existing={kebutuhan} onAdd={addMany} busy={busy} />}
-        {kebutuhan.length === 0 ? <p className="empty">Belum ada permintaan.</p> : (
+        {canEditKb && <PresetPicker existing={kebutuhan} onAdd={addMany} busy={busy} only={isKabel} />}
+        {rows.length === 0 ? <p className="empty">Belum ada permintaan.</p> : (
           <div className="tbl"><table><thead><tr><th>Alat</th><th>Diminta</th><th>Disiapkan gudang</th><th></th></tr></thead>
-            <tbody>{kebutuhan.map((k) => {
-              const qr = planned.concat(sudahKembali).filter((u) => u.kategori === k.kategori).length;
+            <tbody>{rows.map((k) => {
+              const kabel = isKabel(k.kategori);
               return (
-                <tr key={k.id}><td>{k.kategori}{k.grup && <small> · {k.grup}</small>}{k.dari === 'gudang' && <small> · tambahan gudang</small>}</td><td>{k.jumlah}</td>
-                  <td>{qr > 0 || !canEditKb ? <>{siapOf(k)}{qr > 0 && <small> (scan QR)</small>}</>
-                    : <input type="number" min="0" aria-label={'Disiapkan ' + k.kategori} defaultValue={k.siap || 0} style={{ width: 80 }} onBlur={(e) => setSiap(k, e.target.value)} />}</td>
-                  <td>{canEditKb && <button className="danger" disabled={busy} onClick={() => run(() => remove(ref(db, `events/${id}/kebutuhan/${k.id}`)))}>Hapus</button>}</td>
+                <tr key={k.id}><td>{k.kategori}{k.grup && <small> · {k.grup}</small>}{k.auto && <small> · otomatis dari scan</small>}{k.dari === 'gudang' && <small> · tambahan gudang</small>}</td><td>{k.auto ? '-' : k.jumlah}</td>
+                  <td>{kabel && canEditKb && !k.auto
+                    ? <input type="number" min="0" aria-label={'Disiapkan ' + k.kategori} defaultValue={k.siap || 0} style={{ width: 80 }} onBlur={(e) => setSiap(k, e.target.value)} />
+                    : <>{siapOf(k)}<small>{kabel ? ' (manual, tanpa barcode)' : ' (scan QR)'}</small></>}</td>
+                  <td>{canEditKb && !k.auto && <button className="danger" disabled={busy} onClick={() => run(() => remove(ref(db, `events/${id}/kebutuhan/${k.id}`)))}>Hapus</button>}</td>
                 </tr>
               );
             })}</tbody></table></div>
