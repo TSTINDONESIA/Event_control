@@ -125,19 +125,17 @@ export function savePdf(blob, name) {
 export const fileName = (s) => String(s || 'file').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'file';
 
 // PDF detail peralatan satu event
-export function eventPdf({ nama, lokasi, tanggal, teknisi, rows, units }) {
+export function eventPdf({ nama, lokasi, tanggal, teknisi, permintaan, rows, units }) {
   const d = createPdf();
   d.title('PT. TST INDONESIA');
   d.title('Detail Peralatan Event', 11);
   d.gap(6);
-  d.kv('Event', nama); d.kv('Lokasi', lokasi); d.kv('Tanggal', tanggal); d.kv('Teknisi', teknisi);
-  d.heading('Permintaan alat');
+  d.kv('Vendor / Event', nama); d.kv('Lokasi', lokasi); d.kv('Tanggal', tanggal); d.kv('Teknisi', teknisi);
+  d.kv('Kebutuhan alat', permintaan || '-');
+  d.heading('Disiapkan gudang');
   if (rows.length) {
-    d.table(
-      [{ h: 'No', w: 30 }, { h: 'Alat', w: 190 }, { h: 'Diminta', w: 60, right: true }, { h: 'Disiapkan', w: 70, right: true }, { h: 'Keterangan', w: 165 }],
-      rows.map((r, i) => [String(i + 1), r.alat, String(r.minta), String(r.siap), r.ket || '']),
-    );
-  } else d.kv('', 'Belum ada permintaan alat.');
+    d.table([{ h: 'No', w: 30 }, { h: 'Alat', w: 335 }, { h: 'Jumlah', w: 150, right: true }], rows.map((r, i) => [String(i + 1), r.alat, String(r.jumlah)]));
+  } else d.kv('', 'Belum ada alat disiapkan.');
   if (units.length) {
     d.heading(`Unit ber-QR (${units.length})`);
     d.table(
@@ -166,20 +164,18 @@ export function stokPdf(rows, tanggal) {
 }
 
 // PDF "Kirim ke teknisi": daftar alat yang sudah disiapkan gudang
-export function kirimPdf({ nama, lokasi, tanggal, teknisi, gudang, waktu, rows, units }) {
+export function kirimPdf({ nama, lokasi, tanggal, teknisi, gudang, waktu, permintaan, rows, units }) {
   const d = createPdf();
   d.title('PT. TST INDONESIA');
   d.title('Daftar Alat Dikirim ke Teknisi', 11);
   d.gap(6);
   d.kv('Vendor / Event', nama); d.kv('Lokasi', lokasi); d.kv('Tanggal', tanggal);
   d.kv('Teknisi', teknisi); d.kv('Disiapkan oleh', gudang); d.kv('Waktu kirim', waktu);
-  d.heading('Kebutuhan alat');
+  d.kv('Kebutuhan alat', permintaan || '-');
+  d.heading('Alat yang disiapkan');
   if (rows.length) {
-    d.table(
-      [{ h: 'No', w: 30 }, { h: 'Alat', w: 190 }, { h: 'Diminta', w: 60, right: true }, { h: 'Disiapkan', w: 70, right: true }, { h: 'Keterangan', w: 165 }],
-      rows.map((r, i) => [String(i + 1), r.alat, String(r.minta), String(r.siap), r.ket || '']),
-    );
-  } else d.kv('', 'Tidak ada permintaan alat tercatat.');
+    d.table([{ h: 'No', w: 30 }, { h: 'Alat', w: 335 }, { h: 'Jumlah', w: 150, right: true }], rows.map((r, i) => [String(i + 1), r.alat, String(r.jumlah)]));
+  } else d.kv('', 'Belum ada.');
   d.heading(`Unit ber-QR yang dikirim (${units.length})`);
   d.table(
     [{ h: 'No', w: 30 }, { h: 'Kode', w: 100 }, { h: 'Nama', w: 220 }, { h: 'Kategori', w: 165 }],
