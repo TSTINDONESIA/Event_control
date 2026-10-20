@@ -1,4 +1,5 @@
-// Alur sederhana: siapkan (scan) -> kirim ke teknisi -> terima kembali (scan)
+// Alur 5 langkah: admin buat event -> gudang siapkan (scan) + "Sudah disiapkan" + PDF kirim
+// -> teknisi "Alat lengkap diterima" -> teknisi "Kembalikan ke gudang" -> gudang scan kembali -> stok
 import { ref, push, set, update, runTransaction } from 'firebase/database';
 import { db } from './firebase.js';
 import { audit } from './util.js';
@@ -79,4 +80,50 @@ export async function tandai(a, ke, profile, catatan) {
   const tipe = { servis: 'rusak', hilang: 'hilang', tersedia: 'pulih' }[ke];
   await ubah(a, ['tersedia', 'disiapkan', 'keluar', 'servis', 'hilang'], ke, null);
   await catat(a, tipe, profile, catatan ? { catatan } : {});
+}
+
+// ---- tahap event ----
+
+// Gudang: tutup tahap penyiapan (tombol "Sudah disiapkan")
+export async function selesaiSiapkan(ev, profile) {
+  await update(ref(db), {
+    [`events/${ev.id}/tahap`]: 'siap',
+    [`events/${ev.id}/siapWaktu`]: Date.now(),
+    [`events/${ev.id}/siapOleh`]: profile.nama,
+  });
+  audit(profile.uid, 'event_disiapkan', ev.nama).catch(() => {});
+}
+
+// Gudang: buka lagi penyiapan (mis. ada alat yang kelupaan) selama belum dikirim
+export async function bukaPenyiapan(ev, profile) {
+  await update(ref(db), {
+    [`events/${ev.id}/tahap`]: 'rencana',
+    [`events/${ev.id}/siapWaktu`]: null,
+    [`events/${ev.id}/siapOleh`]: null,
+  });
+  audit(profile.uid, 'event_buka_siap', ev.nama).catch(() => {});
+}
+
+// Teknisi: "Alat lengkap diterima" (dikirim -> diterima)
+export async function terimaTeknisi(ev, jumlah, profile) {
+  const key = push(ref(db, `serahTerima/${ev.id}`)).key;
+  await update(ref(db), {
+    [`events/${ev.id}/tahap`]: 'diterima',
+    [`events/${ev.id}/diterimaWaktu`]: Date.now(),
+    [`events/${ev.id}/diterimaOleh`]: profile.nama,
+    [`serahTerima/${ev.id}/${key}`]: { tipe: 'terima', uid: profile.uid, nama: profile.nama, waktu: Date.now(), jumlah },
+  });
+  audit(profile.uid, 'teknisi_terima', `${ev.nama}: ${jumlah} unit`).catch(() => {});
+}
+
+// Teknisi: "Kembalikan ke gudang" (diterima -> kembali)
+export async function kembalikanKeGudang(ev, profile) {
+  const key = push(ref(db, `serahTerima/${ev.id}`)).key;
+  await update(ref(db), {
+    [`events/${ev.id}/tahap`]: 'kembali',
+    [`events/${ev.id}/kembaliWaktu`]: Date.now(),
+    [`events/${ev.id}/kembaliOleh`]: profile.nama,
+    [`serahTerima/${ev.id}/${key}`]: { tipe: 'kembali', uid: profile.uid, nama: profile.nama, waktu: Date.now() },
+  });
+  audit(profile.uid, 'teknisi_kembalikan', ev.nama).catch(() => {});
 }

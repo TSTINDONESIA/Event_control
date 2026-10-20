@@ -164,3 +164,37 @@ export function stokPdf(rows, tanggal) {
   );
   return d.toBlob();
 }
+
+// PDF "Kirim ke teknisi": daftar alat yang sudah disiapkan gudang
+export function kirimPdf({ nama, lokasi, tanggal, teknisi, gudang, waktu, rows, units }) {
+  const d = createPdf();
+  d.title('PT. TST INDONESIA');
+  d.title('Daftar Alat Dikirim ke Teknisi', 11);
+  d.gap(6);
+  d.kv('Vendor / Event', nama); d.kv('Lokasi', lokasi); d.kv('Tanggal', tanggal);
+  d.kv('Teknisi', teknisi); d.kv('Disiapkan oleh', gudang); d.kv('Waktu kirim', waktu);
+  d.heading('Kebutuhan alat');
+  if (rows.length) {
+    d.table(
+      [{ h: 'No', w: 30 }, { h: 'Alat', w: 190 }, { h: 'Diminta', w: 60, right: true }, { h: 'Disiapkan', w: 70, right: true }, { h: 'Keterangan', w: 165 }],
+      rows.map((r, i) => [String(i + 1), r.alat, String(r.minta), String(r.siap), r.ket || '']),
+    );
+  } else d.kv('', 'Tidak ada permintaan alat tercatat.');
+  d.heading(`Unit ber-QR yang dikirim (${units.length})`);
+  d.table(
+    [{ h: 'No', w: 30 }, { h: 'Kode', w: 100 }, { h: 'Nama', w: 220 }, { h: 'Kategori', w: 165 }],
+    units.map((u, i) => [String(i + 1), u.kode, u.nama || '', u.kategori || '-']),
+  );
+  d.gap(10);
+  d.kv('Catatan', 'Teknisi mengecek alat di aplikasi lalu menekan "Alat lengkap diterima".');
+  return d.toBlob();
+}
+
+// Bagikan PDF (menu share HP, mis. WhatsApp); bila tidak didukung, unduh biasa
+export async function bagikanPdf(blob, name, title) {
+  try {
+    const file = new File([blob], name, { type: 'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  savePdf(blob, name);
+}
