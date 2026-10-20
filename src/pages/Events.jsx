@@ -10,6 +10,7 @@ import Assign from '../Assign.jsx';
 import { Loading } from '../components.jsx';
 import { parseICS, gcalLink } from '../gcal.js';
 import { rekap, permintaanText } from '../rekap.js';
+import WaImport from '../WaImport.jsx';
 
 
 const CSS = `
@@ -183,6 +184,7 @@ export default function Events() {
   return (
     <>
       <style>{CSS}</style>
+      {isAdmin && !ed && <WaImport users={users} events={events} profile={profile} onMsg={setMsg} />}
       {isAdmin && !ed && <NewEvent users={users} profile={profile} onMsg={setMsg} />}
       {isAdmin && ed && (
         <form className="card flag row" onSubmit={save}><b>Edit event</b>
