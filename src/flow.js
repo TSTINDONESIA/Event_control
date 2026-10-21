@@ -168,3 +168,13 @@ export async function kembalikanKeGudang(ev, profile) {
   notifRole(profile, 'warehouse', 'Alat dikembalikan: ' + ev.nama, `${profile.nama} mengembalikan alat. Scan di gudang untuk menerima.`, ev.id);
   notifRole(profile, 'admin', 'Alat dikembalikan: ' + ev.nama, `${profile.nama} mengembalikan alat ke gudang.`, ev.id);
 }
+
+// Teknisi: laporkan alat rusak / perlu dicek -> masuk laporan kerusakan + notifikasi ke gudang dan admin
+export async function laporAlat(a, ev, profile, jenis, catatan) {
+  const txt = String(catatan || '').trim();
+  await set(push(ref(db, 'laporanRusak')), { assetId: a.id, kode: a.kode, eventId: ev.id, uid: profile.uid, nama: profile.nama, jenis, catatan: txt, waktu: Date.now() });
+  audit(profile.uid, 'lapor_alat', `${a.kode} (${jenis}) ${ev.nama}`).catch(() => {});
+  const judul = `${jenis === 'rusak' ? 'Alat rusak' : 'Alat perlu dicek'}: ${a.kode}`;
+  const pesan = `${profile.nama} (${ev.nama}): ${a.nama || a.kode}. ${txt}`;
+  await Promise.all([notifRole(profile, 'warehouse', judul, pesan, ev.id), notifRole(profile, 'admin', judul, pesan, ev.id)]);
+}

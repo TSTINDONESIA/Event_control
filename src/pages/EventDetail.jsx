@@ -4,7 +4,7 @@ import { ref, push, set, remove } from 'firebase/database';
 import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
 import { useVal, list, range, audit, fmt } from '../util.js';
-import { siapkan, batalSiapkan, kirim, terimaKembali, selesaikanEvent, selesaiSiapkan, bukaPenyiapan, tutupGudang, bukaGudang, terimaTeknisi, kembalikanKeGudang } from '../flow.js';
+import { siapkan, batalSiapkan, kirim, terimaKembali, selesaikanEvent, selesaiSiapkan, bukaPenyiapan, tutupGudang, bukaGudang, terimaTeknisi, kembalikanKeGudang, laporAlat } from '../flow.js';
 import { norm, TAHAP } from './status.js';
 import { kirimPdf, bagikanPdf, fileName } from '../pdf.js';
 import { Band, Badge, Loading } from '../components.jsx';
@@ -48,6 +48,9 @@ export default function EventDetail() {
   const [ok, setOk] = useState('');
   const [busy, setBusy] = useState(false);
   const [teks, setTeks] = useState(null);          // null = tidak sedang mengedit kebutuhan
+  const [lap, setLap] = useState(null);            // unit yang sedang dilaporkan teknisi
+  const [lapJenis, setLapJenis] = useState('cek');
+  const [lapTeks, setLapTeks] = useState('');
   const [conf, setConf] = useState('');           // tombol yang menunggu ketukan konfirmasi
 
   if (raw === undefined || assets === undefined) return <div className="pad"><Loading /></div>;
@@ -318,12 +321,26 @@ export default function EventDetail() {
         {sent.length > 0 && (
           <>
             <h2>Alat yang dikirim ke teknisi ({sent.length})</h2>
-            <div className="tbl"><table><thead><tr><th>Unit</th><th>Nama</th><th>Kategori</th><th>Status</th>{canTek && tahap === 'dikirim' && <th>Dicek</th>}</tr></thead>
+            <div className="tbl"><table><thead><tr><th>Unit</th><th>Nama</th><th>Kategori</th><th>Status</th>{canTek && tahap === 'dikirim' && <th>Dicek</th>}{canTek && ['dikirim', 'diterima', 'kembali'].includes(tahap) && <th>Lapor</th>}</tr></thead>
               <tbody>{sent.map((u) => (
                 <tr key={u.id}><td><Link to={'/aset/' + u.id}>{u.kode}</Link></td><td>{u.nama}</td><td>{u.kategori || '-'}{gudangOf(u.kategori) === 2 && <small> · Gudang 2</small>}</td>
                   <td>{u.status === 'keluar' && u.eventId === id ? <Badge s="keluar" /> : <><Badge s={u.status} /> <small>kembali</small></>}</td>
-                  {canTek && tahap === 'dikirim' && <td><input type="checkbox" aria-label={'Cek ' + u.kode} disabled={busy} checked={checked(u)} onChange={(e) => toggle(u, e.target.checked)} /></td>}</tr>
+                  {canTek && tahap === 'dikirim' && <td><input type="checkbox" aria-label={'Cek ' + u.kode} disabled={busy} checked={checked(u)} onChange={(e) => toggle(u, e.target.checked)} /></td>}
+                  {canTek && ['dikirim', 'diterima', 'kembali'].includes(tahap) && <td><button className="ghost" onClick={() => { setLap(u); setLapJenis('cek'); setLapTeks(''); setMsg(''); setOk(''); }}>Lapor</button></td>}</tr>
               ))}</tbody></table></div>
+            {lap && (
+              <div className="card flag" style={{ marginTop: 12 }}>
+                <b>Laporkan {lap.kode}{lap.nama ? ' — ' + lap.nama : ''}</b>
+                <div className="row" style={{ marginTop: 8 }}>
+                  <select aria-label="Jenis laporan" value={lapJenis} onChange={(e) => setLapJenis(e.target.value)}>
+                    <option value="cek">Perlu dicek</option><option value="rusak">Rusak</option>
+                  </select>
+                  <input aria-label="Keterangan" placeholder="Keterangan (mis. tidak menyala, kabel putus)" value={lapTeks} onChange={(e) => setLapTeks(e.target.value)} style={{ flex: 1 }} />
+                  <button disabled={busy || !lapTeks.trim()} onClick={() => run(async () => { await laporAlat(lap, ev, profile, lapJenis, lapTeks); setLap(null); setLapTeks(''); }, 'Laporan terkirim ke gudang dan admin.')}>Kirim laporan</button>
+                  <button className="ghost" disabled={busy} onClick={() => setLap(null)}>Batal</button>
+                </div>
+              </div>
+            )}
             <p><small>{list(serah).filter((r) => r.tipe === 'keluar').map((r) => `Dikirim ${fmt(r.waktu)} oleh ${r.nama} (${r.jumlah} unit)`).join(' · ')}</small></p>
           </>
         )}
