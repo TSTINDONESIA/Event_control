@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext.jsx';
 import { useVal, list, fmt } from '../util.js';
 import { TIPE } from './status.js';
+import { Loading } from '../components.jsx';
 
 export default function History() {
   const { profile } = useAuth();
@@ -12,7 +13,7 @@ export default function History() {
   return (
     <>
       <h2>Riwayat transaksi</h2>
-      {tx === undefined ? <p>Memuat…</p> : (
+      {tx === undefined ? <Loading /> : (
         <div className="tbl"><table><thead><tr><th>Waktu</th><th>Tahap</th><th>Unit</th><th>Petugas</th><th>Ket.</th></tr></thead>
           <tbody>{rows.map((r) => (
             <tr key={r.id}><td>{fmt(r.waktu)}</td><td>{TIPE[r.tipe] || r.tipe}</td><td><Link to={'/aset/' + r.assetId}>{r.kode || r.assetId}</Link></td><td>{r.petugasNama || r.petugas}</td><td>{[r.kondisi, r.catatan].filter(Boolean).join(' · ')}</td></tr>

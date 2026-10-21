@@ -3,6 +3,7 @@ import { ref, push, set, remove } from 'firebase/database';
 import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
 import { useVal, list, audit } from '../util.js';
+import { Loading } from '../components.jsx';
 
 export default function Kategori() {
   const { profile } = useAuth();
@@ -23,7 +24,7 @@ export default function Kategori() {
     if (!confirm(`Hapus kategori "${k.nama}"?`)) return;
     try { await remove(ref(db, 'kategori/' + k.id)); await audit(profile.uid, 'kategori_hapus', k.nama); } catch (x) { setMsg(x.message); }
   }
-  if (kat === undefined) return <p>Memuat…</p>;
+  if (kat === undefined) return <Loading />;
   return (
     <>
       <form className="card flag row" onSubmit={add}>

@@ -6,6 +6,7 @@ import { db, auth } from '../firebase.js';
 import cfg from '../firebaseConfig.js';
 import { useAuth } from '../AuthContext.jsx';
 import { useVal, list, audit } from '../util.js';
+import { Loading } from '../components.jsx';
 
 export default function Users() {
   const { profile } = useAuth();
@@ -54,7 +55,7 @@ export default function Users() {
     await deleteApp(app2);
     setBusy(false);
   }
-  if (users === undefined) return <p>Memuat…</p>;
+  if (users === undefined) return <Loading />;
   return (
     <>
       <form className="card flag row" onSubmit={add}>

@@ -42,7 +42,7 @@ export function Progress({ value, max, label, yellow }) {
   );
 }
 
-export const Loading = () => <p className="empty" role="status">Memuat…</p>;
+export const Loading = () => <div className="ld" role="status" aria-label="Memuat"><i /></div>;
 
 export function Footer() {
   return (
