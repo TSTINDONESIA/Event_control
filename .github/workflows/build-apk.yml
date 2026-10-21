@@ -25,6 +25,11 @@ jobs:
           npx cap sync android
       - name: Izin notifikasi Android 13+
         run: sed -i 's#<application#<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <application#' android/app/src/main/AndroidManifest.xml
+      - name: Latar aplikasi navy (tanpa kilat putih)
+        run: |
+          F=android/app/src/main/res/values/styles.xml
+          sed -i '/name="AppTheme.NoActionBar"/a\        <item name="android:windowBackground">#06101F</item>' $F
+          sed -i '/name="AppTheme"/a\        <item name="android:windowBackground">#06101F</item>' $F
       - name: Build APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
