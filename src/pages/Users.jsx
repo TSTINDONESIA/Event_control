@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ref, set, update, get } from 'firebase/database';
+import { ref, set, update, get, remove } from 'firebase/database';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { db, auth } from '../firebase.js';
@@ -18,6 +18,16 @@ export default function Users() {
     setMsg('');
     try { await update(ref(db, 'users/' + id), data); await audit(profile.uid, 'ubah_user', id + ' ' + JSON.stringify(data)); }
     catch (e) { setMsg(e.message); }
+  }
+  async function hapus(u) {
+    setMsg('');
+    if (u.id === profile.uid) return;
+    if (!confirm(`Hapus pengguna "${u.nama}" (${u.email})?\n\nAkun ini tidak bisa login lagi. Tidak bisa dibatalkan.`)) return;
+    try {
+      await remove(ref(db, 'users/' + u.id));
+      try { await audit(profile.uid, 'hapus_user', `${u.nama} ${u.email}`); } catch { /* opsional */ }
+      setMsg(`Pengguna ${u.nama} berhasil dihapus.`);
+    } catch (e) { setMsg(e.message); }
   }
   async function add(e) {
     e.preventDefault(); setBusy(true); setMsg('');
@@ -51,7 +61,7 @@ export default function Users() {
       </form>
       <p><small>Akun baru akan diminta mengganti password saat login pertama, jadi password awal ini hanya Anda dan pengguna yang tahu. Pengguna juga bisa mengganti password kapan saja lewat menu “Ganti password”.</small></p>
       {msg && <p role="status" className={/berhasil|dikirim/.test(msg) ? 'okmsg' : 'err'}>{msg}</p>}
-      <div className="tbl"><table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Aktif</th><th>Reset password</th></tr></thead>
+      <div className="tbl"><table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Aktif</th><th>Reset password</th><th>Hapus</th></tr></thead>
         <tbody>{list(users).sort((a, b) => (a.nama || '').localeCompare(b.nama || '')).map((u) => {
           const me = u.id === profile.uid;
           return (
@@ -59,7 +69,8 @@ export default function Users() {
               <td><select disabled={me} value={u.role} onChange={(e) => patch(u.id, { role: e.target.value })}>
                 <option>teknisi</option><option>warehouse</option><option>admin</option></select></td>
               <td><input type="checkbox" disabled={me} checked={u.aktif === true} onChange={(e) => patch(u.id, { aktif: e.target.checked })} /></td>
-              <td><button className="ghost" onClick={() => sendPasswordResetEmail(auth, u.email).then(() => setMsg('Email reset dikirim ke ' + u.email)).catch((x) => setMsg(x.message))}>Kirim reset</button></td></tr>
+              <td><button className="ghost" onClick={() => sendPasswordResetEmail(auth, u.email).then(() => setMsg('Email reset dikirim ke ' + u.email)).catch((x) => setMsg(x.message))}>Kirim reset</button></td>
+              <td><button className="danger" disabled={me} title={me ? 'Akun Anda sendiri tidak bisa dihapus' : 'Hapus pengguna'} onClick={() => hapus(u)}>Hapus</button></td></tr>
           );
         })}</tbody></table></div>
       <ResetData />
