@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "638909524493",
+    "firebase_url": "https://tsteventcontrol-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "tsteventcontrol",
+    "storage_bucket": "tsteventcontrol.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:638909524493:android:dcb17fb0b0c0a74712c344",
+        "android_client_info": {
+          "package_name": "id.tst.eventcontrol"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1GZP_nvazYqIZkZh78lCTWNf2JuxFwyU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
