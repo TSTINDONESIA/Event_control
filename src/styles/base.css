@@ -1,0 +1,79 @@
+*{box-sizing:border-box}
+html{scroll-padding-top:90px;scroll-behavior:smooth}
+body{margin:0;font-family:var(--font);font-size:15px;line-height:1.55;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(900px 520px at 85% -10%,rgba(121,87,255,.20),transparent 60%),
+    radial-gradient(800px 520px at -5% 8%,rgba(22,139,255,.16),transparent 60%),
+    radial-gradient(700px 400px at 60% 110%,rgba(255,198,41,.07),transparent 60%),
+    var(--bg)}
+a{color:var(--cyan);text-decoration-color:rgba(37,217,242,.4)}
+a:hover{color:#7eeaf7}
+h1,h2,h3,h4{font-weight:800;line-height:1.18;margin:0;letter-spacing:-.01em}
+small{color:var(--text-mute)}
+code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:5px;color:var(--gold)}
+hr{border:0;border-top:1px solid var(--line)}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+::selection{background:rgba(255,198,41,.35)}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--navy-700);border-radius:8px}
+
+/* ---------- buttons ---------- */
+button,.btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--g-gold);color:#1a1200;border:0;border-radius:var(--r);padding:10px 18px;font:inherit;font-weight:800;font-size:13.5px;letter-spacing:.01em;text-decoration:none;cursor:pointer;line-height:1.2;
+  box-shadow:var(--glow-gold);transition:transform var(--t-fast) var(--ease),box-shadow var(--t) var(--ease),filter var(--t)}
+button::after,.btn::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.45) 50%,transparent 65%);transform:translateX(-120%);transition:transform .6s var(--ease);pointer-events:none}
+button:hover,.btn:hover{transform:translateY(-2px);color:#1a1200;filter:brightness(1.05);box-shadow:0 12px 34px rgba(255,198,41,.38)}
+button:hover::after,.btn:hover::after{transform:translateX(120%)}
+button:active,.btn:active{transform:translateY(0)}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.btn.dark,button.dark{background:var(--panel-solid);color:var(--white);border:1px solid var(--line-strong);box-shadow:none}
+.btn.dark:hover,button.dark:hover{color:var(--white);border-color:var(--cyan);box-shadow:var(--glow-cyan)}
+.btn.ghost,button.ghost{background:transparent;color:var(--white);border:1px solid var(--line-strong);box-shadow:none}
+.btn.ghost:hover,button.ghost:hover{color:var(--white);border-color:var(--gold);background:rgba(255,198,41,.08);box-shadow:none}
+button.danger{background:rgba(255,93,108,.1);color:#ff8a95;border:1px solid rgba(255,93,108,.5);box-shadow:none}
+button.danger:hover{background:var(--bad);color:#fff;border-color:var(--bad)}
+button.big{padding:15px 22px;font-size:15px;width:100%}
+button.icon-btn{padding:0;width:40px;height:40px;background:var(--panel);color:var(--white);border:1px solid var(--line);box-shadow:none;border-radius:var(--r)}
+button.icon-btn:hover{border-color:var(--cyan);box-shadow:var(--glow-cyan);color:#fff}
+
+/* ---------- form ---------- */
+input,select,textarea{font:inherit;padding:10px 12px;border:1px solid var(--line-strong);border-radius:var(--r);background:rgba(6,16,31,.7);color:var(--white);max-width:100%;transition:border-color var(--t-fast),box-shadow var(--t-fast)}
+input::placeholder,textarea::placeholder{color:#6f819d}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(37,217,242,.18)}
+select option{background:var(--navy-900);color:var(--white)}
+textarea{width:100%;resize:vertical}
+input[type=checkbox],input[type=radio]{width:18px;height:18px;accent-color:var(--gold);padding:0}
+input[type=date]{color-scheme:dark}
+label{color:var(--text-mute);font-weight:600}
+.search{width:100%;margin:8px 0}
+.err{color:#ff8a95;font-weight:600}
+.okmsg{color:var(--ok);font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.sp{flex:1}
+
+/* ---------- animasi ---------- */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes wipeOut{from{clip-path:inset(0 0 0 0)}to{clip-path:inset(0 0 0 100%)}}
+@keyframes wipeIn{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes scanLine{0%{transform:translateY(0);opacity:0}10%,90%{opacity:1}100%{transform:translateY(100%);opacity:0}}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes streak{from{background-position:0 0}to{background-position:-400px 0}}
+@keyframes toastOut{to{opacity:0;transform:translateY(8px)}}
+.reveal{opacity:0;transform:translateY(22px);transition:opacity var(--t-slow) var(--ease),transform var(--t-slow) var(--ease);transition-delay:var(--d,0ms)}
+.reveal.in{opacity:1;transform:none}
+.reveal.wipe{opacity:1;transform:none;clip-path:inset(0 100% 0 0);transition:clip-path 1s var(--ease);transition-delay:var(--d,0ms)}
+.reveal.wipe.in{clip-path:inset(0 0 0 0)}
+.stagger>*{animation:fadeUp .6s var(--ease) both}
+.stagger>*:nth-child(1){animation-delay:.04s}.stagger>*:nth-child(2){animation-delay:.1s}.stagger>*:nth-child(3){animation-delay:.16s}.stagger>*:nth-child(4){animation-delay:.22s}.stagger>*:nth-child(5){animation-delay:.28s}.stagger>*:nth-child(6){animation-delay:.34s}
+@keyframes fxIn{from{opacity:0;transform:translateY(10px);clip-path:inset(0 100% 0 0)}to{opacity:1;transform:none;clip-path:inset(-60px -60px -60px -60px)}}
+@keyframes fxOut{from{opacity:1;clip-path:inset(-60px -60px -60px -60px)}to{opacity:0;transform:translateY(-6px);clip-path:inset(0 0 0 100%)}}
+.fx-in{animation:fxIn .55s var(--ease) backwards}
+.fx-out{animation:fxOut .22s ease-in forwards;pointer-events:none}
+.band{animation:fxIn .6s var(--ease) backwards}
+/* utilitas efek (bisa dipakai di komponen mana pun) */
+.fade-in{animation:fadeIn .4s var(--ease) both}.fade-out{animation:toastOut .25s ease-in forwards}
+.wipe-in{animation:wipeIn .7s var(--ease) both}.wipe-out{animation:wipeOut .35s ease-in forwards}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
+  .reveal{opacity:1;transform:none;clip-path:none}
+}

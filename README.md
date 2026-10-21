@@ -94,3 +94,13 @@ Tahap event: `rencana` -> `siap` -> `dikirim` -> `diterima` -> `kembali` -> `sel
 **WAJIB setelah deploy:** publish ulang `database.rules.json` (teknisi kini boleh mengubah tahap event yang ditugaskan: dikirim -> diterima -> kembali).
 
 Catatan: sinkron langsung Google Calendar (API) belum ada karena butuh OAuth; saat ini impor lewat file .ics dan tombol "+ Google Calendar" per event.
+
+
+---
+
+## Redesign tampilan (Okt 2026)
+
+Tema navy gelap + aksen biru/cyan/ungu dengan emas sebagai ambient. Judul/brand tetap **TST Event Control**.
+CSS dipecah di `src/styles/` (tokens, base, layout, components, landing); komponen UI reusable di `src/ui.jsx`.
+Halaman sebelum login = landing + form masuk (`pages/Login.jsx`); setelah login: sidebar (desktop) / drawer + navigasi bawah (HP).
+Beranda `/` kini membuka **Dashboard** (`/dashboard`), ditulis ulang mengikuti model data saat ini (aset berstatus + `eventId`, event bertahap).

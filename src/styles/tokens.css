@@ -1,0 +1,36 @@
+/* ===== TST Event Control — design tokens =====
+   Fondasi: deep navy. Aksen: electric blue / cyan / violet. Emas = ambient premium (bukan warna dominan). */
+:root{
+  --navy-950:#06101F; --navy-900:#0A1930; --navy-800:#102644; --navy-700:#16335c;
+  --blue:#168BFF; --cyan:#25D9F2; --violet:#7957FF; --gold:#FFC629; --amber:#FF9D18;
+  --white:#F4F7FF; --muted:#9BAAC1;
+  --ok:#2ee59d; --bad:#ff5d6c; --warn:#FF9D18;
+
+  /* semantic */
+  --bg:var(--navy-950); --panel:rgba(16,38,68,.62); --panel-solid:#0d2140; --panel-2:rgba(255,255,255,.035);
+  --text:var(--white); --text-mute:var(--muted);
+  --line:rgba(140,175,235,.16); --line-strong:rgba(140,175,235,.32);
+  --yellow:var(--gold); /* nama lama dipakai komponen inline */
+
+  /* gradients */
+  --g-gold:linear-gradient(135deg,#FFD84D 0%,var(--gold) 45%,var(--amber) 100%);
+  --g-brand:linear-gradient(135deg,var(--blue) 0%,var(--violet) 100%);
+  --g-cyan:linear-gradient(135deg,var(--cyan),var(--blue));
+  --g-panel:linear-gradient(160deg,rgba(22,51,92,.7),rgba(10,25,48,.78));
+
+  /* shape */
+  --r-sm:8px; --r:12px; --r-lg:18px; --r-xl:24px;
+  --shadow:0 10px 30px rgba(2,8,20,.45);
+  --glow-gold:0 8px 30px rgba(255,198,41,.28);
+  --glow-blue:0 8px 30px rgba(22,139,255,.28);
+  --glow-cyan:0 0 0 1px rgba(37,217,242,.45),0 8px 28px rgba(37,217,242,.18);
+
+  /* spacing */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px; --s8:72px;
+
+  /* motion */
+  --ease:cubic-bezier(.22,.8,.24,1); --t-fast:.16s; --t:.28s; --t-slow:.7s;
+
+  --font:'Montserrat',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --side-w:252px;
+}

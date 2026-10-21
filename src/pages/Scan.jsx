@@ -39,7 +39,7 @@ export default function Scan() {
   }, []);
   return (
     <>
-      <div className="scan-box"><div id="reader" /></div>
+      <div className="scan-box"><div id="reader" /><span className="scan-line" /></div>
       {err && <p className="err" role="alert">{err}</p>}
       <form className="card row" onSubmit={(e) => { e.preventDefault(); go(manual); }}>
         <input aria-label="Kode unit" style={{ flex: 1, minWidth: 220 }} placeholder="Input manual: kode unit (mis. LAM-0001)" value={manual} onChange={(e) => setManual(e.target.value)} />

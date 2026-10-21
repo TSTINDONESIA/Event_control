@@ -22,19 +22,19 @@ const CSS = `
 .ne-need{display:flex;gap:8px;margin-bottom:6px;width:100%}
 .ne-need input:first-child{flex:1;min-width:0}
 .ne-tek{display:flex;flex-wrap:wrap;gap:6px 16px}
-.ne-ics{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #e5e5e0;font-size:14px;text-align:left}
-.ne-ics small{display:block;color:#666}
+.ne-ics{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px;text-align:left}
+.ne-ics small{display:block;color:var(--text-mute)}
 
-.kb summary{cursor:pointer;font-weight:800;padding:10px 12px;background:#000;color:#fff;list-style:none;display:flex;justify-content:space-between;gap:12px;user-select:none}
+.kb summary{cursor:pointer;font-weight:800;padding:11px 14px;background:rgba(22,139,255,.16);border:1px solid rgba(22,139,255,.35);border-radius:var(--r);color:#fff;list-style:none;display:flex;justify-content:space-between;gap:12px;user-select:none}
 .kb summary::-webkit-details-marker{display:none}
 .kb summary::after{content:"▾"}
 .kb[open] summary::after{content:"▴"}
-.kb-body{border:1px solid #000;border-top:0;background:#fff;padding:0 12px 12px;text-align:left}
-.kb-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #e5e5e0;font-size:15px}
+.kb-body{border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r) var(--r);background:var(--panel-2);padding:0 12px 12px;text-align:left}
+.kb-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
 .kb-row b{font-weight:800}
-.kb-row small{display:block;color:#666;font-weight:500}
+.kb-row small{display:block;color:var(--text-mute);font-weight:500}
 .kb-row .n{text-align:right;white-space:nowrap}
-.kb-row .n i{font-style:normal;color:#666;font-size:12px;display:block}
+.kb-row .n i{font-style:normal;color:var(--text-mute);font-size:12px;display:block}
 .kb .dl{width:100%;margin-top:12px}
 @media screen and (max-width:720px){
   table td.kb-cell{display:block!important;text-align:left!important}

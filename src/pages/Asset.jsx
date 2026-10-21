@@ -46,7 +46,7 @@ export default function Asset() {
   return (
     <>
       <Band title={a.kode} sub={`${a.nama}${a.kategori ? ' · ' + a.kategori : ''}`}>
-        <Badge s={a.status} /><Link className="btn ghost" to="/inventaris" style={{ color: '#fff' }}>← Inventaris</Link>
+        <Badge s={a.status} /><Link className="btn ghost" to="/inventaris" >← Inventaris</Link>
       </Band>
       <div className="pad">
         {msg && <p className="err" role="alert">{msg}</p>}

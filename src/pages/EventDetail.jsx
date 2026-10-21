@@ -14,16 +14,16 @@ import { PRESET_NAMES, isKabel, gudangOf } from '../presets.js';
 import { rekap, permintaanText } from '../rekap.js';
 
 const CSS = `
-.stp{list-style:none;margin:0 0 16px;padding:0;border:2px solid #000;background:#fff}
-.stp li{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-bottom:1px solid #e5e5e0}
+.stp{list-style:none;margin:0 0 16px;padding:0;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--g-panel);overflow:hidden}
+.stp li{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-bottom:1px solid var(--line)}
 .stp li:last-child{border-bottom:0}
-.stp .dot{flex:0 0 26px;height:26px;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px}
-.stp li.done .dot{background:#000;color:var(--yellow,#fae24a)}
-.stp li.now{background:var(--yellow,#fae24a)}
-.stp li.now .dot{background:#000;color:#fff}
+.stp .dot{flex:0 0 26px;height:26px;border:2px solid var(--line-strong);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px}
+.stp li.done .dot{background:var(--g-brand);border-color:transparent;color:#fff}
+.stp li.now{background:linear-gradient(90deg,rgba(255,198,41,.14),transparent)}
+.stp li.now .dot{background:var(--g-gold);border-color:transparent;color:#1a1200}
 .stp b{display:block}
-.stp small{color:#555}
-.act{border:2px solid #000;border-left-width:8px;border-left-color:var(--yellow,#fae24a);background:#fff;padding:12px;margin-bottom:16px}
+.stp small{color:var(--text-mute)}
+.act{border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:var(--r-lg);background:var(--g-panel);padding:14px;margin-bottom:16px}
 .act p{margin:0 0 10px}
 `;
 
@@ -178,8 +178,8 @@ export default function EventDetail() {
       <style>{CSS}</style>
       <Band title={ev.nama} sub={`${range(ev)}${ev.lokasi ? ' · ' + ev.lokasi : ''}`}>
         <span className={'badge ' + t.cls}>{t.label}</span>
-        <Link className="btn ghost" to={'/surat-jalan/' + id} style={{ color: '#fff' }}>Surat Jalan</Link>
-        <Link className="btn ghost" to="/event" style={{ color: '#fff' }}>← Semua tugas</Link>
+        <Link className="btn ghost" to={'/surat-jalan/' + id} >Surat Jalan</Link>
+        <Link className="btn ghost" to="/event" >← Semua tugas</Link>
       </Band>
       <div className="pad">
         <ol className="stp">{steps.map(([label, done, info], i) => (

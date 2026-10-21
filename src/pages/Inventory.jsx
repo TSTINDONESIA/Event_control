@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ref, push, update } from 'firebase/database';
 import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
@@ -11,7 +11,9 @@ import ImportCSV from '../ImportCSV.jsx';
 export default function Inventory() {
   const { profile } = useAuth();
   const assets = useVal('assets');
-  const [q, setQ] = useState('');
+  const [sp] = useSearchParams();
+  const [q, setQ] = useState(sp.get('q') || '');
+  useEffect(() => { setQ(sp.get('q') || ''); }, [sp]);
   const [st, setSt] = useState('');
   const [f, setF] = useState({ nama: '', kategori: '', jumlah: 1 });
   const [msg, setMsg] = useState('');

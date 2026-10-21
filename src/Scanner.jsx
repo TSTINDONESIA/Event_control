@@ -26,12 +26,12 @@ function beep(freq, ms, vibrate) {
 const bunyi = { scan: () => beep(1400, 130, 60), ok: () => beep(1900, 90, 40), gagal: () => beep(280, 320, [80, 40, 80]) };
 
 const CSS = `
-.scan-box.paused{opacity:.2;filter:grayscale(1)}
-.scan-hint{margin:8px 0;font-size:14px;color:#555}
-.scan-confirm{max-width:420px;border:2px solid #000;border-left:8px solid var(--yellow,#fae24a);background:#fff;padding:12px;margin:10px 0}
-.scan-confirm small{display:block;font-weight:800;letter-spacing:.06em;color:#555}
+.scan-box.paused{opacity:.25;filter:grayscale(1)}
+.scan-hint{margin:10px 0;font-size:14px;color:var(--text-mute)}
+.scan-confirm{max-width:440px;border:1px solid rgba(255,198,41,.45);border-left:4px solid var(--gold);border-radius:var(--r-lg);background:var(--g-panel);padding:14px;margin:10px 0;box-shadow:var(--shadow);animation:fadeUp .3s var(--ease)}
+.scan-confirm small{display:block;font-weight:700;letter-spacing:.1em;color:var(--cyan)}
 .scan-confirm b{display:block;font-size:20px;margin:2px 0}
-.scan-confirm span{display:block;margin-bottom:10px}
+.scan-confirm span{display:block;margin-bottom:10px;color:var(--text-mute)}
 `;
 
 // Alur satu unit: scan -> BEEP -> muncul nama -> tekan Input (simpan) -> kamera siap lagi -> scan berikutnya.
@@ -96,7 +96,7 @@ export default function Scanner({ check, onConfirm, confirmLabel = 'Input', plac
         </div>
       )}
       {err && <p className="err" role="alert">{err}</p>}
-      <div className={'scan-box' + (pending ? ' paused' : '')}><div id={rid} /></div>
+      <div className={'scan-box' + (pending ? ' paused' : '')}><div id={rid} />{!pending && !camErr && <span className="scan-line" />}</div>
       {!pending && !camErr && <p className="scan-hint">Arahkan kamera ke QR. Setelah bunyi beep, cek nama lalu tekan {confirmLabel}.</p>}
       {camErr && <p className="err" role="alert">{camErr}</p>}
       <form className="card row" onSubmit={(e) => { e.preventDefault(); const v = manual.trim(); if (v) { last.current = { t: '', at: 0 }; setManual(''); hr.current(v); } }}>

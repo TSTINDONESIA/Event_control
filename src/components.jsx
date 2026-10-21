@@ -44,7 +44,7 @@ export function Progress({ value, max, label, yellow }) {
   );
 }
 
-export const Loading = () => <p className="empty">Memuat…</p>;
+export const Loading = () => <p className="empty" role="status">Memuat…</p>;
 
 export function Footer() {
   return (
