@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ref, set, update, get, remove } from 'firebase/database';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { db, auth } from '../firebase.js';
 import cfg from '../firebaseConfig.js';
 import { useAuth } from '../AuthContext.jsx';
@@ -35,7 +35,14 @@ export default function Users() {
     const app2 = initializeApp(cfg, 'sec' + Date.now());
     try {
       const a2 = getAuth(app2);
-      const c = await createUserWithEmailAndPassword(a2, f.email.trim(), f.password);
+      let c;
+      try { c = await createUserWithEmailAndPassword(a2, f.email.trim(), f.password); }
+      catch (x) {
+        if (x.code !== 'auth/email-already-in-use') throw x;
+        // akun login lama (profil sudah dihapus): pakai ulang bila password yang diketik cocok
+        try { c = await signInWithEmailAndPassword(a2, f.email.trim(), f.password); }
+        catch { throw new Error('Email ini sudah punya akun login lama dengan password berbeda. Ketik password lama akun itu, atau hapus akunnya di Firebase Console → Authentication, atau pakai “Kirim reset”.'); }
+      }
       try {
         await set(ref(db, 'users/' + c.user.uid), { nama: f.nama.trim(), email: f.email.trim(), role: f.role, aktif: true, wajibGanti: true });
       } catch (x) { throw new Error(`Akun login dibuat (UID ${c.user.uid}) tapi profil gagal disimpan: ${x.message}`); }
