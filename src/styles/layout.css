@@ -3,11 +3,14 @@
 .sidebar{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px;padding:18px 14px;background:linear-gradient(180deg,rgba(10,25,48,.92),rgba(6,16,31,.96));border-right:1px solid var(--line);z-index:60}
 .sidebar::after{content:"";position:absolute;top:0;right:-1px;width:1px;height:100%;background:linear-gradient(180deg,transparent,rgba(255,198,41,.55) 30%,rgba(255,198,41,.0) 60%,rgba(37,217,242,.4) 90%,transparent);opacity:.7;pointer-events:none}
 .brand{display:flex;align-items:center;text-decoration:none;flex:none}
-.brand img{height:46px;width:auto;display:block;max-width:100%}
+.logo-img{display:block;width:auto;height:52px;max-width:100%;filter:drop-shadow(0 6px 16px rgba(22,139,255,.35));transition:transform var(--t) var(--ease)}
+a.brand:hover .logo-img{transform:scale(1.04)}
+.side-brand .logo-img{height:104px}
+.foot .logo-img{height:72px}
 .brand-txt{font-weight:900;font-size:22px;letter-spacing:.02em;color:#fff}
 .brand-txt b{color:var(--gold)}
 .side-brand{padding:4px 8px 14px;border-bottom:1px solid var(--line);margin-bottom:8px}
-.side-brand small{display:block;margin-top:4px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:700}
+.side-brand>small{display:none}
 .side-nav{display:flex;flex-direction:column;gap:3px;flex:1;overflow:auto}
 .side-nav a{position:relative;display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:var(--r);color:#c5d2e8;text-decoration:none;font-weight:600;font-size:14px;transition:background var(--t-fast),color var(--t-fast),transform var(--t-fast) var(--ease)}
 .side-nav a svg{flex:none;opacity:.85;transition:transform var(--t) var(--ease)}
@@ -56,7 +59,7 @@
 .foot-in{max-width:1280px;margin:0 auto;padding:30px 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:26px}
 .foot h4{color:#fff;margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.1em}
 .foot a{color:var(--gold);text-decoration:none}
-.foot img{height:44px}
+
 .copy{border-top:1px solid var(--line);text-align:center;padding:14px;font-size:12px}
 
 /* ---------- bottom nav (mobile) ---------- */

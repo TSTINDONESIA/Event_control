@@ -12,11 +12,9 @@ export function QR({ text, size = 200 }) {
   return src ? <img src={src} width={size} height={size} alt="QR" /> : null;
 }
 
-export function Logo() {
-  const [bad, setBad] = useState(false);
-  return bad
-    ? <span className="brand-txt"><b>TST</b> INDONESIA</span>
-    : <img src={LOGO} alt="TST Indonesia" onError={() => setBad(true)} />;
+// Logo resmi TST Indonesia - Event Control (file: public/logo.png, juga dipakai sebagai ikon layar utama)
+export function Logo({ size }) {
+  return <img className="logo-img" src={import.meta.env.BASE_URL + 'logo.png'} alt="TST Indonesia Event Control" style={size ? { height: size, width: size } : undefined} />;
 }
 
 export const Badge = ({ s }) => {
