@@ -126,6 +126,45 @@
           ".validate": "newData.hasChildren(['qty','mulai','selesai','tahap'])&&newData.child('qty').isNumber()&&newData.child('qty').val()>0&&newData.child('tahap').val().matches(/^(rencana|keluar|diterima|kembali|selesai)$/)"
         }
       }
+    },
+    "notifications": {
+      "$uid": {
+        ".read": "auth!=null&&auth.uid===$uid&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        ".indexOn": [
+          "waktu"
+        ],
+        "$id": {
+          ".write": "auth!=null&&!data.exists()&&root.child('users/'+auth.uid+'/aktif').val()===true",
+          ".validate": "newData.hasChildren(['judul','pesan','waktu','dari'])&&newData.child('dari').val()===auth.uid"
+        }
+      }
+    },
+    "notifRole": {
+      "$role": {
+        ".read": "auth!=null&&root.child('users/'+auth.uid+'/role').val()===$role&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        ".indexOn": [
+          "waktu"
+        ],
+        "$id": {
+          ".write": "auth!=null&&!data.exists()&&root.child('users/'+auth.uid+'/aktif').val()===true",
+          ".validate": "newData.hasChildren(['judul','pesan','waktu','dari'])&&newData.child('dari').val()===auth.uid"
+        }
+      }
+    },
+    "notifSeen": {
+      "$uid": {
+        ".read": "auth!=null&&auth.uid===$uid",
+        ".write": "auth!=null&&auth.uid===$uid",
+        ".validate": "newData.isNumber()"
+      }
+    },
+    "fcmTokens": {
+      ".read": false,
+      "$uid": {
+        "$token": {
+          ".write": "auth!=null&&auth.uid===$uid&&root.child('users/'+auth.uid+'/aktif').val()===true"
+        }
+      }
     }
   }
 }

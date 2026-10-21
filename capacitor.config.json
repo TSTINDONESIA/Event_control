@@ -1,0 +1,9 @@
+{
+  "appId": "id.tst.eventcontrol",
+  "appName": "TST Event Control",
+  "webDir": "dist",
+  "backgroundColor": "#06101F",
+  "android": {
+    "allowMixedContent": false
+  }
+}

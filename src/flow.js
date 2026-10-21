@@ -4,6 +4,7 @@ import { ref, push, set, update, runTransaction } from 'firebase/database';
 import { db } from './firebase.js';
 import { audit } from './util.js';
 import { norm } from './pages/status.js';
+import { notifRole, notifTeknisi } from './notify.js';
 
 async function catat(a, tipe, profile, extra = {}) {
   const rec = { tipe, assetId: a.id, kode: a.kode, petugas: profile.uid, petugasNama: profile.nama, waktu: Date.now(), ...extra };
@@ -56,6 +57,8 @@ export async function kirim(units, ev, profile, items = {}) {
     });
     await update(ref(db, 'events/' + ev.id), { tahap: 'dikirim', dikirimWaktu: Date.now(), dikirimOleh: profile.nama });
     audit(profile.uid, 'kirim_teknisi', `${ev.nama}: ${ok.length} unit`).catch(() => {});
+    notifTeknisi(profile, ev, 'Alat dikirim: ' + ev.nama, `${ok.length} unit alat dikirim gudang. Cek dan tekan “Alat lengkap diterima”.`);
+    notifRole(profile, 'admin', 'Alat dikirim: ' + ev.nama, `${profile.nama} mengirim ${ok.length} unit ke teknisi.`, ev.id);
   }
   return { ok, gagal };
 }
@@ -65,6 +68,7 @@ export async function terimaKembali(a, ev, profile, { rusak = false, catatan = '
   await ubah(a, ['keluar'], rusak ? 'servis' : 'tersedia', null);
   await catat(a, rusak ? 'rusak' : 'masuk', profile, { eventId: ev.id, kondisi: rusak ? 'rusak' : 'baik', ...(catatan.trim() ? { catatan: catatan.trim() } : {}) });
   if (rusak) {
+    notifRole(profile, 'admin', 'Alat rusak: ' + a.kode, `${a.nama || a.kode} rusak saat kembali dari ${ev.nama}. ${catatan.trim()}`, ev.id);
     try { await set(push(ref(db, 'laporanRusak')), { assetId: a.id, kode: a.kode, eventId: ev.id, uid: profile.uid, nama: profile.nama, catatan: catatan.trim() || 'Rusak saat dikembalikan', waktu: Date.now() }); } catch { /* opsional */ }
   }
 }
@@ -73,6 +77,8 @@ export async function terimaKembali(a, ev, profile, { rusak = false, catatan = '
 export async function selesaikanEvent(ev, profile) {
   await update(ref(db, 'events/' + ev.id), { tahap: 'selesai', selesaiWaktu: Date.now() });
   audit(profile.uid, 'event_selesai', ev.nama).catch(() => {});
+  notifRole(profile, 'admin', 'Event selesai: ' + ev.nama, 'Semua alat sudah kembali ke gudang.', ev.id);
+  notifTeknisi(profile, ev, 'Event selesai: ' + ev.nama, 'Semua alat sudah diterima kembali gudang. Terima kasih.');
 }
 
 // admin/gudang: tindakan manual di halaman unit
@@ -80,6 +86,8 @@ export async function tandai(a, ke, profile, catatan) {
   const tipe = { servis: 'rusak', hilang: 'hilang', tersedia: 'pulih' }[ke];
   await ubah(a, ['tersedia', 'disiapkan', 'keluar', 'servis', 'hilang'], ke, null);
   await catat(a, tipe, profile, catatan ? { catatan } : {});
+  const lbl = { servis: 'rusak / servis', hilang: 'hilang', tersedia: 'tersedia lagi' }[ke];
+  notifRole(profile, profile.role === 'admin' ? 'warehouse' : 'admin', 'Status alat: ' + a.kode, `${a.nama || a.kode} ditandai ${lbl} oleh ${profile.nama}.${catatan ? ' ' + catatan : ''}`);
 }
 
 // ---- tahap event ----
@@ -92,6 +100,8 @@ export async function selesaiSiapkan(ev, profile) {
     [`events/${ev.id}/siapOleh`]: profile.nama,
   });
   audit(profile.uid, 'event_disiapkan', ev.nama).catch(() => {});
+  notifRole(profile, 'admin', 'Alat siap: ' + ev.nama, `${profile.nama} selesai menyiapkan alat.`, ev.id);
+  notifTeknisi(profile, ev, 'Alat disiapkan: ' + ev.nama, 'Gudang sudah menyiapkan alat Anda, tinggal dikirim.');
 }
 
 // Gudang: buka lagi penyiapan (mis. ada alat yang kelupaan) selama belum dikirim
@@ -116,6 +126,8 @@ export async function tutupGudang(ev, g, jumlah, final, profile) {
   }
   await update(ref(db), up);
   audit(profile.uid, 'gudang_tutup', `${ev.nama}: Gudang ${g}, ${jumlah} unit`).catch(() => {});
+  notifRole(profile, 'admin', `Gudang ${g} selesai: ${ev.nama}`, `${profile.nama} menyiapkan ${jumlah} unit.${final ? ' Semua gudang selesai, alat siap kirim.' : ''}`, ev.id);
+  if (final) notifTeknisi(profile, ev, 'Alat disiapkan: ' + ev.nama, 'Gudang sudah menyiapkan alat Anda, tinggal dikirim.');
 }
 
 // Buka lagi penyiapan satu gudang (selama belum dikirim)
@@ -139,6 +151,8 @@ export async function terimaTeknisi(ev, jumlah, profile) {
     [`serahTerima/${ev.id}/${key}`]: { tipe: 'terima', uid: profile.uid, nama: profile.nama, waktu: Date.now(), jumlah },
   });
   audit(profile.uid, 'teknisi_terima', `${ev.nama}: ${jumlah} unit`).catch(() => {});
+  notifRole(profile, 'warehouse', 'Alat diterima: ' + ev.nama, `${profile.nama} menerima ${jumlah} unit.`, ev.id);
+  notifRole(profile, 'admin', 'Alat diterima: ' + ev.nama, `${profile.nama} menerima ${jumlah} unit.`, ev.id);
 }
 
 // Teknisi: "Kembalikan ke gudang" (diterima -> kembali)
@@ -151,4 +165,6 @@ export async function kembalikanKeGudang(ev, profile) {
     [`serahTerima/${ev.id}/${key}`]: { tipe: 'kembali', uid: profile.uid, nama: profile.nama, waktu: Date.now() },
   });
   audit(profile.uid, 'teknisi_kembalikan', ev.nama).catch(() => {});
+  notifRole(profile, 'warehouse', 'Alat dikembalikan: ' + ev.nama, `${profile.nama} mengembalikan alat. Scan di gudang untuk menerima.`, ev.id);
+  notifRole(profile, 'admin', 'Alat dikembalikan: ' + ev.nama, `${profile.nama} mengembalikan alat ke gudang.`, ev.id);
 }

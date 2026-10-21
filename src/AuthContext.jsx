@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { ref, get } from 'firebase/database';
 import { auth, db, configured } from './firebase.js';
+import { unregisterPush } from './push.js';
 
 const Ctx = createContext({});
 export const useAuth = () => useContext(Ctx);
@@ -31,5 +32,5 @@ export function AuthProvider({ children }) {
       }
     });
   }, []);
-  return <Ctx.Provider value={{ ...s, error, logout: () => signOut(auth), patchProfile: (d) => setS((x) => ({ ...x, profile: { ...x.profile, ...d } })) }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ ...s, error, logout: async () => { await unregisterPush(); await signOut(auth); }, patchProfile: (d) => setS((x) => ({ ...x, profile: { ...x.profile, ...d } })) }}>{children}</Ctx.Provider>;
 }

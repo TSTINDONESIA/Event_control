@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { ref, set, remove } from 'firebase/database';
 import { db } from './firebase.js';
 import { useAuth } from './AuthContext.jsx';
-import { list, audit } from './util.js';
+import { list, audit, range } from './util.js';
+import { notifUser } from './notify.js';
 
 export default function Assign({ ev, users, isAdmin }) {
   const { profile } = useAuth();
@@ -15,11 +16,12 @@ export default function Assign({ ev, users, isAdmin }) {
       const t = techs.find((x) => x.id === u);
       await set(ref(db, `events/${ev.id}/teknisi/${u}`), t.nama);
       await audit(profile.uid, 'tugas_teknisi', `${t.nama} -> ${ev.nama}`);
+      notifUser(profile, u, 'Tugas baru: ' + ev.nama, `Anda ditugaskan${ev.lokasi ? ' di ' + ev.lokasi : ''}, ${range(ev)}. Gudang akan menyiapkan alat.`, ev.id);
       setU('');
     } catch (e) { setMsg(e.message); }
   }
   async function del(id) {
-    try { await remove(ref(db, `events/${ev.id}/teknisi/${id}`)); } catch (e) { setMsg(e.message); }
+    try { await remove(ref(db, `events/${ev.id}/teknisi/${id}`)); notifUser(profile, id, 'Penugasan dibatalkan', `Anda tidak lagi ditugaskan di ${ev.nama}.`, ev.id); } catch (e) { setMsg(e.message); }
   }
   return (
     <div>

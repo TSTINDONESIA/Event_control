@@ -9,6 +9,7 @@ import { norm, TAHAP } from './status.js';
 import { kirimPdf, bagikanPdf, fileName } from '../pdf.js';
 import { Band, Badge, Loading } from '../components.jsx';
 import Assign from '../Assign.jsx';
+import { notifRole } from '../notify.js';
 import Scanner, { findAsset, unlockBeep } from '../Scanner.jsx';
 import { PRESET_NAMES, isKabel, gudangOf } from '../presets.js';
 import { rekap, permintaanText } from '../rekap.js';
@@ -159,6 +160,7 @@ export default function EventDetail() {
   }); };
   const simpanTeks = () => run(async () => {
     await set(ref(db, `events/${id}/kebutuhanTeks`), teks.trim() || null);
+    notifRole(profile, 'warehouse', 'Spesifikasi alat diubah: ' + ev.nama, (teks.trim() || '(dikosongkan)').slice(0, 160), id);
     await audit(profile.uid, 'kebutuhan_event', ev.nama);
     setTeks(null);
   });

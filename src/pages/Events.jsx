@@ -4,6 +4,7 @@ import { ref, push, set, update } from 'firebase/database';
 import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
 import { useVal, list, audit, range } from '../util.js';
+import { notifUser, notifRole } from '../notify.js';
 import { TAHAP, STATUS, norm } from './status.js';
 import { eventPdf, savePdf, fileName } from '../pdf.js';
 import Assign from '../Assign.jsx';
@@ -104,6 +105,9 @@ function NewEvent({ users, profile, onMsg }) {
         ...(teks.trim() ? { kebutuhanTeks: teks.trim() } : {}), ...(Object.keys(teknisi).length ? { teknisi } : {}),
       });
       await audit(profile.uid, 'event_baru', f.nama);
+      const info = `${f.lokasi.trim() ? f.lokasi.trim() + ', ' : ''}${range(f)}`;
+      notifRole(profile, 'warehouse', 'Event baru: ' + f.nama.trim(), `${info}. Siapkan alat.${teks.trim() ? ' Kebutuhan: ' + teks.trim().slice(0, 120) : ''}`, key);
+      Object.keys(teknisi).forEach((uid) => notifUser(profile, uid, 'Tugas baru: ' + f.nama.trim(), `Anda ditugaskan. ${info}.`, key));
       setF(empty); setTeks(''); setTek({});
     } catch (x) { onMsg(x.message); }
     setBusy(false);
@@ -170,6 +174,9 @@ export default function Events() {
       const up = {};
       for (const k of ['nama', 'lokasi', 'mulai', 'selesai']) up[`events/${ed.id}/${k}`] = String(ed[k] || '').trim();
       await update(ref(db), up);
+      const msgUbah = `${ed.lokasi ? ed.lokasi + ', ' : ''}${range(ed)}`;
+      notifRole(profile, 'warehouse', 'Event diubah: ' + ed.nama, 'Jadwal/lokasi terbaru: ' + msgUbah, ed.id);
+      Object.keys(ed.teknisi || {}).forEach((uid) => notifUser(profile, uid, 'Event diubah: ' + ed.nama, 'Jadwal/lokasi terbaru: ' + msgUbah, ed.id));
       setEd(null);
     } catch (x) { setMsg(x.message); }
   }

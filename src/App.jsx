@@ -18,6 +18,7 @@ import Users from './pages/Users.jsx';
 import Password from './pages/Password.jsx';
 import Daftar from './pages/Daftar.jsx';
 import SuratJalan from './pages/SuratJalan.jsx';
+import Notifikasi, { Bell, NotifBridge } from './Notif.jsx';
 
 const TITLES = {
   '/dashboard': ['Dashboard', 'Ringkasan aktivitas operasional hari ini.'],
@@ -28,6 +29,7 @@ const TITLES = {
   '/laporan': ['Laporan', 'Pengiriman ke teknisi, kerusakan, dan stok.'],
   '/label': ['Cetak QR', 'Label QR massal per kategori.'],
   '/daftar': ['Daftarkan unit via scan', 'Tempel label, scan, isi nama. Unit langsung masuk stok.'],
+  '/notifikasi': ['Notifikasi', 'Info tugas dan status alat untuk akun Anda.'],
   '/password': ['Ganti password', 'Jaga kerahasiaan akun Anda.'],
   '/pengguna': ['Pengguna & peran', 'Kelola akun Admin, Warehouse, dan Teknisi.'],
 };
@@ -88,6 +90,7 @@ export default function App() {
   const search = (e) => { e.preventDefault(); nav('/inventaris?q=' + encodeURIComponent(q.trim())); };
   return (
     <div className={'app' + (open ? ' open' : '')}>
+      <NotifBridge />
       <aside className="sidebar" aria-label="Menu utama">
         <div className="side-brand"><Link to="/" className="brand" onClick={close} aria-label="TST Event Control"><Logo /></Link><small>Event Control</small></div>
         <nav className="side-nav">
@@ -111,6 +114,7 @@ export default function App() {
           ) : <span className="top-title">TST Event Control</span>}
           <span className="sp" />
           <span className="top-date">{tgl}</span>
+          <Bell />
         </header>
         {profile.wajibGanti === true && pathname !== '/password' && (
           <div className="notice" role="alert"><b>Akun Anda baru dibuat.</b> Demi privasi, ganti password dari admin dengan password pribadi Anda. <Link to="/password" className="btn dark">Ganti password sekarang</Link></div>
@@ -124,6 +128,7 @@ export default function App() {
             <Route path="/event/:id" element={<EventDetail />} />
             <Route path="/surat-jalan/:id" element={<SuratJalan />} />
             <Route path="/password" element={<Password />} />
+            <Route path="/notifikasi" element={<Notifikasi />} />
             {staff && <Route path="/stok" element={<Stok />} />}
             {staff && <Route path="/inventaris" element={<Inventory />} />}
             {staff && <Route path="/aset/:id" element={<Asset />} />}
