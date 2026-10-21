@@ -23,7 +23,7 @@ function beep(freq, ms, vibrate) {
   } catch { /* abaikan */ }
   try { navigator.vibrate && navigator.vibrate(vibrate); } catch { /* abaikan */ }
 }
-const bunyi = { scan: () => beep(1400, 130, 60), ok: () => beep(1900, 90, 40), gagal: () => beep(280, 320, [80, 40, 80]) };
+export const bunyi = { scan: () => beep(1400, 130, 60), ok: () => beep(1900, 90, 40), gagal: () => beep(280, 320, [80, 40, 80]) };
 
 const CSS = `
 .scan-box.paused{opacity:.25;filter:grayscale(1)}

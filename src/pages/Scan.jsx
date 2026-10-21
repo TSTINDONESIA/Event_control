@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useVal, list, labelId } from '../util.js';
 import { useAuth } from '../AuthContext.jsx';
+import { bunyi, unlockBeep } from '../Scanner.jsx';
 
 export default function Scan() {
   const nav = useNavigate();
@@ -24,10 +25,10 @@ export default function Scan() {
   function go(text) {
     if (done.current) return;
     const id = resolve(text);
-    if (id) { done.current = true; nav('/aset/' + id); return; }
+    if (id) { done.current = true; bunyi.scan(); nav('/aset/' + id); return; }
     const lid = labelId(text);
-    if (lid && profile.role !== 'teknisi') { done.current = true; nav('/daftar?id=' + lid); return; } // label baru: daftarkan
-    setErr('QR / kode tidak dikenali: ' + text);
+    if (lid && profile.role !== 'teknisi') { done.current = true; bunyi.scan(); nav('/daftar?id=' + lid); return; } // label baru: daftarkan
+    bunyi.gagal(); setErr('QR / kode tidak dikenali: ' + text);
   }
   useEffect(() => {
     const q = new Html5Qrcode('reader');
@@ -38,13 +39,13 @@ export default function Scan() {
     return () => { dead = true; if (on) q.stop().then(() => q.clear()).catch(() => {}); };
   }, []);
   return (
-    <>
+    <div onPointerDown={unlockBeep}>
       <div className="scan-box"><div id="reader" /><span className="scan-line" /></div>
       {err && <p className="err" role="alert">{err}</p>}
       <form className="card row" onSubmit={(e) => { e.preventDefault(); go(manual); }}>
         <input aria-label="Kode unit" style={{ flex: 1, minWidth: 220 }} placeholder="Input manual: kode unit (mis. LAM-0001)" value={manual} onChange={(e) => setManual(e.target.value)} />
         <button>Cari</button>
       </form>
-    </>
+    </div>
   );
 }
