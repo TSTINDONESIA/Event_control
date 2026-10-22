@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
+import CameraZoom, { ScanBoxPicker, scanConfig, useScanBox } from './CameraZoom.jsx';
 
 // ---- bunyi beep (Web Audio; di iPhone harus "dibuka" lewat sentuhan, lihat unlockBeep) ----
 let actx = null;
@@ -48,6 +49,11 @@ export default function Scanner({ check, onConfirm, confirmLabel = 'Input', plac
   const [err, setErr] = useState('');
   const [camErr, setCamErr] = useState('');
   const [manual, setManual] = useState('');
+  const qrRef = useRef(null);
+  const boxRef = useRef(null);
+  const [camOn, setCamOn] = useState(false);
+  const [boxKey, pickBox, qrbox] = useScanBox();
+  const qb = useRef(qrbox); qb.current = qrbox;
 
   const handle = async (text) => {
     if (stage.current !== 'scan') return;
@@ -73,13 +79,14 @@ export default function Scanner({ check, onConfirm, confirmLabel = 'Input', plac
   const batal = () => { last.current = { t: pending.text, at: Date.now() }; setPending(null); stage.current = 'scan'; };
 
   useEffect(() => {
+    setCamOn(false);
     const q = new Html5Qrcode(rid);
     let dead = false, on = false;
-    q.start({ facingMode: 'environment' }, { fps: 10, qrbox: 220 }, (t) => hr.current(t), () => {})
-      .then(() => { on = true; if (dead) q.stop().then(() => q.clear()).catch(() => {}); })
+    q.start({ facingMode: 'environment' }, scanConfig(qb.current), (t) => hr.current(t), () => {})
+      .then(() => { on = true; if (dead) { q.stop().then(() => q.clear()).catch(() => {}); return; } qrRef.current = q; setCamOn(true); })
       .catch((e) => setCamErr('Kamera tidak bisa dibuka (' + (e?.message || e) + '). Izinkan kamera atau pakai input manual.'));
-    return () => { dead = true; if (on) q.stop().then(() => q.clear()).catch(() => {}); };
-  }, [rid]);
+    return () => { dead = true; qrRef.current = null; if (on) q.stop().then(() => q.clear()).catch(() => {}); };
+  }, [rid, boxKey]);
 
   return (
     <div onPointerDown={unlockBeep}>
@@ -96,7 +103,9 @@ export default function Scanner({ check, onConfirm, confirmLabel = 'Input', plac
         </div>
       )}
       {err && <p className="err" role="alert">{err}</p>}
-      <div className={'scan-box' + (pending ? ' paused' : '')}><div id={rid} />{!pending && !camErr && <span className="scan-line" />}</div>
+      <div ref={boxRef} className={'scan-box' + (pending ? ' paused' : '')}><div id={rid} />{!pending && !camErr && <span className="scan-line" />}</div>
+      <CameraZoom qr={qrRef} on={camOn} boxRef={boxRef} />
+      <ScanBoxPicker value={boxKey} onPick={pickBox} />
       {!pending && !camErr && <p className="scan-hint">Arahkan kamera ke QR. Setelah bunyi beep, cek nama lalu tekan {confirmLabel}.</p>}
       {camErr && <p className="err" role="alert">{camErr}</p>}
       <form className="card row" onSubmit={(e) => { e.preventDefault(); const v = manual.trim(); if (v) { last.current = { t: '', at: 0 }; setManual(''); hr.current(v); } }}>

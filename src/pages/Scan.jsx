@@ -4,6 +4,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { useVal, list, labelId } from '../util.js';
 import { useAuth } from '../AuthContext.jsx';
 import { bunyi, unlockBeep } from '../Scanner.jsx';
+import CameraZoom, { ScanBoxPicker, scanConfig, useScanBox } from '../CameraZoom.jsx';
 
 export default function Scan() {
   const nav = useNavigate();
@@ -13,6 +14,11 @@ export default function Scan() {
   const done = useRef(false);
   const [err, setErr] = useState('');
   const [manual, setManual] = useState('');
+  const qrRef = useRef(null);
+  const boxRef = useRef(null);
+  const [camOn, setCamOn] = useState(false);
+  const [boxKey, pickBox, qrbox] = useScanBox();
+  const qb = useRef(qrbox); qb.current = qrbox;
   latest.current = list(assets);
 
   function resolve(text) {
@@ -31,16 +37,19 @@ export default function Scan() {
     bunyi.gagal(); setErr('QR / kode tidak dikenali: ' + text);
   }
   useEffect(() => {
+    setCamOn(false);
     const q = new Html5Qrcode('reader');
     let dead = false, on = false;
-    q.start({ facingMode: 'environment' }, { fps: 10, qrbox: 240 }, go, () => {})
-      .then(() => { on = true; if (dead) q.stop().then(() => q.clear()).catch(() => {}); })
+    q.start({ facingMode: 'environment' }, scanConfig(qb.current), go, () => {})
+      .then(() => { on = true; if (dead) { q.stop().then(() => q.clear()).catch(() => {}); return; } qrRef.current = q; setCamOn(true); })
       .catch((e) => setErr('Kamera tidak bisa dibuka (' + (e?.message || e) + '). Izinkan kamera atau pakai input manual.'));
-    return () => { dead = true; if (on) q.stop().then(() => q.clear()).catch(() => {}); };
-  }, []);
+    return () => { dead = true; qrRef.current = null; if (on) q.stop().then(() => q.clear()).catch(() => {}); };
+  }, [boxKey]);
   return (
     <div onPointerDown={unlockBeep}>
-      <div className="scan-box"><div id="reader" /><span className="scan-line" /></div>
+      <div ref={boxRef} className="scan-box"><div id="reader" /><span className="scan-line" /></div>
+      <CameraZoom qr={qrRef} on={camOn} boxRef={boxRef} />
+      <ScanBoxPicker value={boxKey} onPick={pickBox} />
       {err && <p className="err" role="alert">{err}</p>}
       <form className="card row" onSubmit={(e) => { e.preventDefault(); go(manual); }}>
         <input aria-label="Kode unit" style={{ flex: 1, minWidth: 220 }} placeholder="Input manual: kode unit (mis. LAM-0001)" value={manual} onChange={(e) => setManual(e.target.value)} />
