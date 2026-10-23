@@ -1,106 +1,36 @@
-# TST EVENT CONTROL v1.0
+# TST Interpreter Control (repo terpisah)
 
-React + Vite + Firebase (Auth + Realtime Database), dideploy ke GitHub Pages.
+React + Vite + Firebase (Anonymous Auth untuk tamu dan Usher; Usher dikenali dari daftar nama + nomor HP, Email/Password hanya opsional untuk admin).
+Tidak ada data atau kode Event Control di repo ini.
 
-## Fitur
-- Login/logout, 3 role: **admin**, **warehouse** (gudang), **teknisi**.
-- Dashboard: stok per status, event mendatang, unit terlambat kembali.
-- Event: tambah, edit (alokasi ikut menyesuaikan, dicek bentrok), hapus; penugasan teknisi.
-- Inventaris: unit dengan QR, kategori, impor/ekspor CSV, edit data, hapus (admin).
-- Scan QR kamera + input manual; alokasi dengan cek bentrok tanggal (transaksi atomik).
-- Keluar/masuk dengan konfirmasi; status rusak/servis/tersedia; transaksi & audit log tidak bisa diubah.
-- Teknisi: menu Tugas dengan checklist per event, laporan kerusakan per unit.
-- Laporan stok per kategori + ekspor CSV; cetak label QR satu/massal.
-- Pengguna (admin): buat akun, ubah role/aktif/email, kirim reset password.
+## Pasang
+1. **Firebase project BARU** (misal `tst-interpreter`) agar data benar-benar terpisah dari Event Control.
+   - Authentication -> Sign-in method: aktifkan **Anonymous** dan **Email/Password**.
+   - Realtime Database -> Create (region Singapore) -> tab Rules -> tempel `database.rules.json` -> Publish.
+   - Project settings -> Add web app -> salin config ke `src/firebaseConfig.js` (termasuk `databaseURL`).
+   - **Usher pertama (sekali saja)**: Realtime Database -> Data, tambah `interpreter/usherDaftar/628123456789` = `Nama Usher` (nomor format 62..., tanpa 0/+/spasi; nama persis seperti yang akan diketik).
+   - Setelah itu Usher masuk di `#/usher` cukup dengan **nama + nomor HP**. Usher lain ditambah dari tab Pengaturan -> Daftar Usher.
+   - (Opsional) Admin lewat email: Authentication -> Users -> Add user, lalu `interpreter/usher/<UID>` = `true`.
+2. Buat repo GitHub baru (**Private** juga bisa, Pages gratis butuh Public kecuali akun berbayar), push semua isi folder ini ke `main`.
+3. Settings -> Pages -> Source: **GitHub Actions**.
+4. Firebase -> Authentication -> Settings -> Authorized domains: tambahkan `USERNAME.github.io`.
 
-## Hak akses
-| | admin | warehouse | teknisi |
-|---|---|---|---|
-| Lihat dashboard/event/inventaris | ✓ | ✓ | ✓ |
-| Tambah/edit/hapus event, tugaskan teknisi | ✓ | | |
-| Alokasi, keluar/masuk, tambah/edit unit, kategori | ✓ | ✓ | |
-| Riwayat, laporan, scan, label | ✓ | ✓ | |
-| Hapus aset, kelola pengguna, audit log | ✓ | | |
-| Checklist tugas, laporan kerusakan | ✓ | | ✓ (event yang ditugaskan) |
+## Alamat
+- Tamu: `https://USERNAME.github.io/REPO/#/`
+- Usher: `https://USERNAME.github.io/REPO/#/usher` (tab Pengaturan: nomor Usher, acara, batas jam, QR)
 
-## Setup
-1. Firebase Console → proyek (Spark/gratis) → Authentication → aktifkan **Email/Password**.
-2. Realtime Database → buat database → isi `src/firebaseConfig.js` (termasuk `databaseURL` sesuai region).
-3. Tab Rules → tempel `database.rules.json` → Publish.
-4. Authorized domains → tambahkan `USERNAME.github.io`.
-5. Akun admin pertama: buat user di Authentication, lalu tambahkan `users/<UID>` = `nama`, `email`, `role: "admin"`, `aktif: true` (boolean). Akun lain dibuat dari menu Pengguna.
-6. GitHub: Settings → Pages → Source **GitHub Actions**; push ke `main`.
+Lokal: `npm install` lalu `npm run dev`. Kamera/QR tamu perlu HTTPS (Pages sudah HTTPS).
 
-Jalankan lokal: `npm install` lalu `npm run dev`. Kamera HP butuh HTTPS (GitHub Pages sudah HTTPS). Cetak label QR setelah deploy, bukan saat localhost.
+## Fitur tambahan (v1.1)
+- **Dua bahasa (ID/EN)** di halaman tamu, tombol bahasa di atas; pilihan diingat, default mengikuti bahasa browser. Brand **TST Indonesia** tampil besar di header.
+- **Kontak tamu: nomor WhatsApp atau email.** Pengingat Usher otomatis membuka WhatsApp (nomor) atau aplikasi email (email).
+- **Tombol bantuan teknisi** di halaman tamu: satu klik langsung ke WhatsApp teknisi. Nomornya diisi Usher/Admin di `#/usher` -> Pengaturan -> *Nomor teknisi* (tersimpan di `interpreter/config/teknisi`).
+- **Penilaian singkat** (bintang pelayanan + bintang alat + komentar opsional) muncul di halaman tamu setelah Usher menekan *Sudah kembali*. Hasil + rata-rata ada di tab **Penilaian** dan ikut diunduh di CSV.
 
-## Uji sebelum operasional
-- Login: password salah ditolak; user tanpa `users/<uid>` atau `aktif:false` ditolak.
-- Bentrok: dua event tanggal beririsan, aset sama dialokasikan ke keduanya → kedua ditolak; edit tanggal event yang membuat bentrok → ditolak.
-- Keluar-masuk: tersedia → Keluarkan → keluar → Terima kembali → tersedia; klik ganda hanya satu transaksi.
-- Teknisi: tidak ada tombol aksi stok; tidak bisa ubah `users/*/role` lewat console browser.
-- Tanpa login, baca/tulis semua node ditolak (Rules Playground).
-- Pastikan tidak ada service account/private key di repo.
+**PENTING setelah update:** tempel ulang `database.rules.json` ke Realtime Database -> Rules -> Publish (ada aturan baru untuk `uid` peminjam dan `nilai`). Tanpa ini pendaftaran tamu akan ditolak.
 
-## Batasan yang perlu diketahui
-- Cek bentrok tanggal dilakukan di klien; pengguna gudang yang sengaja curang bisa menulis langsung ke database. Jaminan penuh butuh backend tepercaya.
-- Status aset dan catatan transaksi adalah dua penulisan; bila pencatatan gagal setelah 3 percobaan, status otomatis dikembalikan.
-- Semua pengguna aktif bisa membaca semua event (belum dibatasi per teknisi).
-- Akun lama tidak dihapus dari Authentication saat dinonaktifkan; nonaktifkan lewat menu Pengguna.
-
----
-
-## Serah terima per event (Okt 2026)
-
-Barang jumlah (kabel, konektor, dll): menu Lainnya → Barang jumlah, jumlah per event di halaman event; selisih saat terima/kembali muncul di Dashboard (node `bulk`, `bulkEvent`).
-
-Gudang: *Siapkan semua* dan *Keluarkan semua* di halaman event, lalu *Surat Jalan (PDF)* dibagikan lewat WhatsApp. Teknisi: *Terima semua* (centang pengecualian) dan *Kembalikan semua*. Gudang tetap scan per unit saat terima kembali. Unit pengecualian muncul sebagai *Selisih serah terima* di Dashboard. **Publish ulang aturan database** (ada node baru `serahTerima`).
-
----
-
-## Pembaruan desain & alur (Okt 2026)
-
-**Tampilan** mengikuti tstindonesia.id: header hitam + garis kuning, Montserrat tebal huruf kapital, hero foto, tombol kuning, footer kantor TST.
-
-**Alur 8 langkah** (sesuai diagram "Alur Proses Sistem"):
-1. Admin/Warehouse buat event, kebutuhan peralatan, dan teknisi: menu *Event*
-2. Cek stok per tanggal & alokasi (tolak jadwal bentrok): halaman detail event
-3. Persiapan gudang, scan QR → `disiapkan`
-4. Pengeluaran, scan QR → `keluar` (Sudah keluar)
-5. Teknisi scan untuk konfirmasi → `diterima`
-6. Setup selesai → `digunakan` (checklist setup otomatis tercentang)
-7. Pengembalian oleh teknisi/gudang → `menunggu_kembali`
-8. Gudang scan & cek kondisi → `tersedia` atau `servis`
-
-Status lain: `hilang`, `pensiun`. Data lama aman: `rusak` ditampilkan sebagai "Servis / rusak".
-
-**WAJIB setelah deploy kode:** publish ulang aturan database
-
-    firebase deploy --only database
-
-(aturan baru mengizinkan teknisi mengonfirmasi langkah 5–7 untuk event yang ditugaskan, dan warehouse mengelola event).
-
----
-
-## Alur 5 langkah (Okt 2026)
-
-1. **Admin** membuat event: vendor, tanggal (manual atau dari file .ics Google Calendar), kebutuhan alat (mis. 1 Booth, 25 Receiver), dan memilih teknisi.
-2. **Gudang** melihat tugas yang sama, scan QR tiap alat, tekan **Sudah disiapkan**, lalu **PDF Kirim ke teknisi** (unit berstatus *Di teknisi*, PDF bisa dibagikan ke WhatsApp).
-3. **Teknisi** melihat jadwal dan daftar alat dari gudang, mencentang tiap unit, lalu tekan **Alat lengkap diterima**.
-4. Setelah event, teknisi tekan **Kembalikan ke gudang**.
-5. **Gudang** tekan **Scan barang kembali**; unit masuk stok lagi (rusak -> Servis). Event otomatis *Selesai* saat unit terakhir di-scan.
-
-Tahap event: `rencana` -> `siap` -> `dikirim` -> `diterima` -> `kembali` -> `selesai`.
-
-**WAJIB setelah deploy:** publish ulang `database.rules.json` (teknisi kini boleh mengubah tahap event yang ditugaskan: dikirim -> diterima -> kembali).
-
-Catatan: sinkron langsung Google Calendar (API) belum ada karena butuh OAuth; saat ini impor lewat file .ics dan tombol "+ Google Calendar" per event.
-
-
----
-
-## Redesign tampilan (Okt 2026)
-
-Tema navy gelap + aksen biru/cyan/ungu dengan emas sebagai ambient. Judul/brand tetap **TST Event Control**.
-CSS dipecah di `src/styles/` (tokens, base, layout, components, landing); komponen UI reusable di `src/ui.jsx`.
-Halaman sebelum login = landing + form masuk (`pages/Login.jsx`); setelah login: sidebar (desktop) / drawer + navigasi bawah (HP).
-Beranda `/` kini membuka **Dashboard** (`/dashboard`), ditulis ulang mengikuti model data saat ini (aset berstatus + `eventId`, event bertahap).
+## Barcode receiver (v1.2)
+- **QR di label hanya berisi nomor unit** (mis. `A001`), *bukan link*. QR dipakai khusus untuk **scan oleh Usher**; tamu tetap mengetik nomor alat di halaman tamu.
+- **Cetak label** (login admin/email): `#/usher` -> Pengaturan -> *Cetak barcode label*. Awalan huruf + rentang nomor, maksimal 100 label sekali cetak, label 30 x 35 mm (48 per lembar A4). Tombol Cetak atau Simpan PDF. Cetak ulang satu label: isi nomor yang sama di Dari dan Sampai.
+- **Pengembalian lewat scan**: tombol *Scan alat kembali* di dashboard Usher. Scan -> bunyi beep -> tampil peminjam + alat lain miliknya -> *Kembalikan* atau *Semua*. Kalau QR rusak, ketik nomor dari tulisan di bawah QR.
+- **Tukar alat** juga bisa lewat scan (tombol kamera di samping kolom nomor lama dan baru).
