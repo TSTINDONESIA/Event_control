@@ -1,13 +1,15 @@
-// Config Web App Firebase: proyek tsteventcontrol
+// Config Web App Firebase milik project PERUSAHAAN.
+// Isi dari Firebase Console -> Project settings -> Your apps -> Web app.
+// Selama masih berawalan "ISI", aplikasi menampilkan layar "Config belum diisi".
+// (Key web Firebase bukan rahasia, tapi BATASI di Google Cloud Console -> APIs & Services -> Credentials:
+//  HTTP referrer = domain aplikasi Anda.)
 export default {
-  apiKey: 'AIzaSyCMtmtlBMBB2lffd4FlpCoqKNZ30Uz0XNA',
-  authDomain: 'tsteventcontrol.firebaseapp.com',
-  projectId: 'tsteventcontrol',
-  storageBucket: 'tsteventcontrol.firebasestorage.app',
-  messagingSenderId: '638909524493',
-  appId: '1:638909524493:web:59f70a1e0a6e55e712c344',
-
-  // Pakai SATU baris saja. Cocokkan dengan URL di Console → Realtime Database → Data.
-  databaseURL: 'https://tsteventcontrol-default-rtdb.asia-southeast1.firebasedatabase.app', // Singapore
-  // databaseURL: 'https://tsteventcontrol-default-rtdb.firebaseio.com', // US (Iowa)
+  apiKey: 'ISI_API_KEY',
+  authDomain: 'ISI_PROJECT_ID.firebaseapp.com',
+  projectId: 'ISI_PROJECT_ID',
+  storageBucket: 'ISI_PROJECT_ID.firebasestorage.app',
+  messagingSenderId: 'ISI_SENDER_ID',
+  appId: 'ISI_APP_ID',
+  // Salin dari Console -> Realtime Database (URL di atas data), mis. region Singapore:
+  databaseURL: 'https://ISI_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app',
 };

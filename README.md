@@ -1,36 +1,62 @@
-# TST Interpreter Control (repo terpisah)
+# TST Event Control
 
-React + Vite + Firebase (Anonymous Auth untuk tamu dan Usher; Usher dikenali dari daftar nama + nomor HP, Email/Password hanya opsional untuk admin).
-Tidak ada data atau kode Event Control di repo ini.
+Aplikasi internal untuk mengelola event, inventaris alat ber-QR, pengiriman ke teknisi, dan pengembalian.
+React + Vite + Firebase (Auth + Realtime Database + Cloud Functions). Web (PWA) dan APK Android (Capacitor).
 
-## Pasang
-1. **Firebase project BARU** (misal `tst-interpreter`) agar data benar-benar terpisah dari Event Control.
-   - Authentication -> Sign-in method: aktifkan **Anonymous** dan **Email/Password**.
-   - Realtime Database -> Create (region Singapore) -> tab Rules -> tempel `database.rules.json` -> Publish.
-   - Project settings -> Add web app -> salin config ke `src/firebaseConfig.js` (termasuk `databaseURL`).
-   - **Usher pertama (sekali saja)**: Realtime Database -> Data, tambah `interpreter/usherDaftar/628123456789` = `Nama Usher` (nomor format 62..., tanpa 0/+/spasi; nama persis seperti yang akan diketik).
-   - Setelah itu Usher masuk di `#/usher` cukup dengan **nama + nomor HP**. Usher lain ditambah dari tab Pengaturan -> Daftar Usher.
-   - (Opsional) Admin lewat email: Authentication -> Users -> Add user, lalu `interpreter/usher/<UID>` = `true`.
-2. Buat repo GitHub baru (**Private** juga bisa, Pages gratis butuh Public kecuali akun berbayar), push semua isi folder ini ke `main`.
-3. Settings -> Pages -> Source: **GitHub Actions**.
-4. Firebase -> Authentication -> Settings -> Authorized domains: tambahkan `USERNAME.github.io`.
+## Alur kerja
+1. **Admin** membuat event, menugaskan teknisi, mengisi kebutuhan alat (teks bebas, mis. `5 Delegate Mic`).
+2. **Gudang** menyiapkan alat dengan scan QR, lalu **Kirim ke teknisi** (tercatat + PDF).
+3. **Teknisi** menekan *Alat lengkap diterima*, lalu *Kembalikan ke gudang*; boleh melapor alat rusak.
+4. **Gudang** scan alat yang kembali (tandai rusak bila perlu). Semua kembali, event selesai.
+5. **Admin** memantau lewat Dashboard dan Laporan; *Surat Jalan* siap cetak dari halaman event.
 
-## Alamat
-- Tamu: `https://USERNAME.github.io/REPO/#/`
-- Usher: `https://USERNAME.github.io/REPO/#/usher` (tab Pengaturan: nomor Usher, acara, batas jam, QR)
+| | admin | warehouse | teknisi |
+|---|:-:|:-:|:-:|
+| Buat/ubah/hapus event, tugaskan teknisi | ✓ | | |
+| Siapkan, kirim, terima kembali (scan) | ✓ | ✓ | |
+| Inventaris, daftar unit, cetak QR | ✓ | ✓ | |
+| Laporan, kelola pengguna, cadangan | ✓ | | |
+| Lihat event, konfirmasi terima/kembali, lapor alat | ✓ | ✓ | ✓ |
 
-Lokal: `npm install` lalu `npm run dev`. Kamera/QR tamu perlu HTTPS (Pages sudah HTTPS).
+## Pemasangan (project Firebase milik perusahaan)
+Gunakan project Firebase atas nama akun perusahaan (bukan akun pribadi), dengan paket **Blaze** (Cloud Functions mewajibkannya; pemakaian kecil biasanya tetap hampir gratis).
 
-## Fitur tambahan (v1.1)
-- **Dua bahasa (ID/EN)** di halaman tamu, tombol bahasa di atas; pilihan diingat, default mengikuti bahasa browser. Brand **TST Indonesia** tampil besar di header.
-- **Kontak tamu: nomor WhatsApp atau email.** Pengingat Usher otomatis membuka WhatsApp (nomor) atau aplikasi email (email).
-- **Tombol bantuan teknisi** di halaman tamu: satu klik langsung ke WhatsApp teknisi. Nomornya diisi Usher/Admin di `#/usher` -> Pengaturan -> *Nomor teknisi* (tersimpan di `interpreter/config/teknisi`).
-- **Penilaian singkat** (bintang pelayanan + bintang alat + komentar opsional) muncul di halaman tamu setelah Usher menekan *Sudah kembali*. Hasil + rata-rata ada di tab **Penilaian** dan ikut diunduh di CSV.
+1. **Firebase Console** -> buat project. Aktifkan *Authentication -> Email/Password* dan *Realtime Database* (region Singapore).
+2. **Web app**: Project settings -> Add web app -> salin config ke `src/firebaseConfig.js` (termasuk `databaseURL`).
+3. **Aturan database**: tempel `database.rules.json` ke Realtime Database -> Rules -> Publish (atau `firebase deploy --only database`).
+4. **Admin pertama** (sekali saja): Authentication -> Add user, lalu di Realtime Database tambahkan
+   `users/<UID>` = `{ nama, email, role: "admin", aktif: true }` (aktif berupa boolean). Admin lain dan semua akun berikutnya dibuat dari menu **Pengguna**.
+5. **Cloud Functions** (push notifikasi + kelola akun): `firebase deploy --only functions`. Bila database *bukan* di region Singapore/instance default, set env `DB_INSTANCE`.
+6. **Hosting**: workflow `deploy.yml` memakai GitHub Pages (butuh repo Public atau akun berbayar). Untuk data internal lebih baik **Firebase Hosting** atau server kantor dengan domain perusahaan. Tambahkan domain itu di Authentication -> Settings -> Authorized domains.
+7. **Batasi API key** di Google Cloud Console -> Credentials: HTTP referrer = domain aplikasi; untuk Android, package `id.tst.eventcontrol` + SHA-1.
 
-**PENTING setelah update:** tempel ulang `database.rules.json` ke Realtime Database -> Rules -> Publish (ada aturan baru untuk `uid` peminjam dan `nilai`). Tanpa ini pendaftaran tamu akan ditolak.
+### Secrets / variables GitHub (bila memakai workflow)
+| Nama | Jenis | Dipakai untuk |
+|---|---|---|
+| `FIREBASE_SERVICE_ACCOUNT` | secret | deploy functions + rules |
+| `FIREBASE_PROJECT_ID` | variable | deploy functions + rules |
+| `GOOGLE_SERVICES_JSON_B64` | secret | build APK (`base64 -w0 google-services.json`) |
 
-## Barcode receiver (v1.2)
-- **QR di label hanya berisi nomor unit** (mis. `A001`), *bukan link*. QR dipakai khusus untuk **scan oleh Usher**; tamu tetap mengetik nomor alat di halaman tamu.
-- **Cetak label** (login admin/email): `#/usher` -> Pengaturan -> *Cetak barcode label*. Awalan huruf + rentang nomor, maksimal 100 label sekali cetak, label 30 x 35 mm (48 per lembar A4). Tombol Cetak atau Simpan PDF. Cetak ulang satu label: isi nomor yang sama di Dari dan Sampai.
-- **Pengembalian lewat scan**: tombol *Scan alat kembali* di dashboard Usher. Scan -> bunyi beep -> tampil peminjam + alat lain miliknya -> *Kembalikan* atau *Semua*. Kalau QR rusak, ketik nomor dari tulisan di bawah QR.
-- **Tukar alat** juga bisa lewat scan (tombol kamera di samping kolom nomor lama dan baru).
+Workflow **Build APK** hanya jalan manual (Actions -> Run workflow) dan menghasilkan APK *debug*. Untuk dibagikan ke karyawan, buat build *release* bertanda tangan (keystore disimpan di secret, jangan di repo).
+
+## Pengembangan
+```
+npm install
+npm run dev          # lokal
+npm test             # unit test (parser kebutuhan, kalender, status)
+npm run check:rules  # validasi database.rules.json
+npm run build
+```
+Kamera/scan QR butuh HTTPS (atau `localhost`).
+
+## Operasional
+- **Backup**: menu Pengguna -> *Unduh cadangan (JSON)*, lakukan rutin; aktifkan juga backup otomatis Realtime Database di Firebase.
+- **Akun**: password awal dari admin wajib diganti saat login pertama (minimal 8 karakter). Pengguna dihapus lewat menu Pengguna (akun login ikut terhapus). Lupa password: tombol di layar login.
+- **Gudang 2** (receiver, headset, laptop) dan daftar nama alat standar diatur di `src/presets.js`.
+
+## Batasan yang diketahui
+- Teknisi masih bisa *membaca* semua event dan unit (bukan hanya tugasnya); penulisan sudah dibatasi. Pembatasan baca per teknisi butuh perubahan struktur data.
+- Notifikasi push hanya Android (APK). Di web, notifikasi muncul di dalam aplikasi.
+- Kabel/barang tanpa QR dihitung manual oleh gudang.
+- Test otomatis baru mencakup fungsi murni; alur Firebase belum diuji dengan Firebase Emulator.
+- Belum diuji build/jalan di lingkungan nyata: jalankan `npm install && npm test && npm run build` lebih dulu.

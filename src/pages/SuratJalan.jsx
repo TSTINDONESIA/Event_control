@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useVal, list, fmtDate } from '../util.js';
 import { Loading } from '../components.jsx';
+import { parseKebutuhan } from '../kebutuhan.js';
 
 const days = (e) => Math.round((new Date(e.selesai) - new Date(e.mulai)) / 864e5) + 1;
 
@@ -44,12 +45,17 @@ export default function SuratJalan() {
   const [veh, setVeh] = useState('');
   if (ev === undefined || serah === undefined) return <Loading />;
   if (ev === null) return <p>Event tidak ditemukan.</p>;
-  const rows = list(ev.kebutuhan);
+  // event lama: ev.kebutuhan (terstruktur, ada grup). Event baru: ev.kebutuhanTeks (teks bebas dari admin).
+  const legacy = list(ev.kebutuhan);
+  const rows = legacy.length
+    ? legacy
+    : parseKebutuhan(ev.kebutuhanTeks).map((k, i) => ({ id: 'k' + i, grup: 'Layanan (Surat Jalan)', kategori: k.kategori, jumlah: k.jumlah }))
+        .concat(list(ev.tambahan).map((t) => ({ id: 't' + t.id, grup: 'Layanan (Surat Jalan)', kategori: t.nama, jumlah: t.jumlah })));
   const layanan = rows.filter((k) => k.grup === 'Layanan (Surat Jalan)');
   const alat = rows.filter((k) => k.grup !== 'Layanan (Surat Jalan)');
   const kirim = list(serah).filter((r) => r.tipe === 'keluar').sort((a, b) => b.waktu - a.waktu)[0];
   const dur = days(ev) + (days(ev) > 1 ? ' DAYS' : ' DAY');
-  const qty = (k) => (k.siap > 0 ? k.siap : k.jumlah);
+  const qty = (k) => (k.siap > 0 ? k.siap : (k.jumlah ?? ''));
   const tek = Object.values(ev.teknisi || {}).join(', ');
   const Table = ({ items, pad }) => (
     <table className="sj-table">

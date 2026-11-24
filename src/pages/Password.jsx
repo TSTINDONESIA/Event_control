@@ -16,7 +16,7 @@ export default function Password() {
 
   async function submit(e) {
     e.preventDefault(); setMsg(''); setOk(false);
-    if (pw.length < 6) { setMsg('Password baru minimal 6 karakter.'); return; }
+    if (pw.length < 8) { setMsg('Password baru minimal 8 karakter.'); return; }
     if (pw !== pw2) { setMsg('Konfirmasi password tidak sama.'); return; }
     if (pw === cur) { setMsg('Password baru harus berbeda dari password lama.'); return; }
     setBusy(true);
@@ -42,8 +42,8 @@ export default function Password() {
       <p style={{ margin: 0 }}>Akun: <b>{auth.currentUser?.email}</b></p>
       <label htmlFor="cur">Password saat ini</label>
       <input id="cur" type="password" autoComplete="current-password" value={cur} onChange={(e) => setCur(e.target.value)} required />
-      <label htmlFor="n1">Password baru (min 6 karakter)</label>
-      <input id="n1" type="password" autoComplete="new-password" minLength={6} value={pw} onChange={(e) => setPw(e.target.value)} required />
+      <label htmlFor="n1">Password baru (min 8 karakter)</label>
+      <input id="n1" type="password" autoComplete="new-password" minLength={8} value={pw} onChange={(e) => setPw(e.target.value)} required />
       <label htmlFor="n2">Ulangi password baru</label>
       <input id="n2" type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} required />
       <button disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan password'}</button>

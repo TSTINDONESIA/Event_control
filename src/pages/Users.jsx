@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { ref, set, update, get, remove } from 'firebase/database';
-import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { db, auth } from '../firebase.js';
-import cfg from '../firebaseConfig.js';
+import { ref, update, get } from 'firebase/database';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
+import { db, auth, fn } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
 import { useVal, list, audit } from '../util.js';
 import { Loading } from '../components.jsx';
@@ -23,36 +22,19 @@ export default function Users() {
   async function hapus(u) {
     setMsg('');
     if (u.id === profile.uid) return;
-    if (!confirm(`Hapus pengguna "${u.nama}" (${u.email})?\n\nAkun ini tidak bisa login lagi. Tidak bisa dibatalkan.`)) return;
+    if (!confirm(`Hapus pengguna "${u.nama}" (${u.email})?\n\nAkun login ikut dihapus dan tidak bisa dibatalkan.`)) return;
     try {
-      await remove(ref(db, 'users/' + u.id));
-      try { await audit(profile.uid, 'hapus_user', `${u.nama} ${u.email}`); } catch { /* opsional */ }
+      await httpsCallable(fn, 'hapusPengguna')({ uid: u.id });
       setMsg(`Pengguna ${u.nama} berhasil dihapus.`);
     } catch (e) { setMsg(e.message); }
   }
   async function add(e) {
     e.preventDefault(); setBusy(true); setMsg('');
-    // Auth kedua supaya admin tidak ter-logout saat membuat akun baru
-    const app2 = initializeApp(cfg, 'sec' + Date.now());
     try {
-      const a2 = getAuth(app2);
-      let c;
-      try { c = await createUserWithEmailAndPassword(a2, f.email.trim(), f.password); }
-      catch (x) {
-        if (x.code !== 'auth/email-already-in-use') throw x;
-        // akun login lama (profil sudah dihapus): pakai ulang bila password yang diketik cocok
-        try { c = await signInWithEmailAndPassword(a2, f.email.trim(), f.password); }
-        catch { throw new Error('Email ini sudah punya akun login lama dengan password berbeda. Ketik password lama akun itu, atau hapus akunnya di Firebase Console → Authentication, atau pakai “Kirim reset”.'); }
-      }
-      try {
-        await set(ref(db, 'users/' + c.user.uid), { nama: f.nama.trim(), email: f.email.trim(), role: f.role, aktif: true, wajibGanti: true });
-      } catch (x) { throw new Error(`Akun login dibuat (UID ${c.user.uid}) tapi profil gagal disimpan: ${x.message}`); }
-      await audit(profile.uid, 'user_baru', f.email);
-      await signOut(a2);
+      await httpsCallable(fn, 'buatPengguna')({ nama: f.nama.trim(), email: f.email.trim(), password: f.password, role: f.role });
       setF({ nama: '', email: '', password: '', role: 'teknisi' });
       setMsg('Pengguna berhasil dibuat.');
     } catch (x) { setMsg(x.message); }
-    await deleteApp(app2);
     setBusy(false);
   }
   if (users === undefined) return <Loading />;
@@ -61,7 +43,7 @@ export default function Users() {
       <form className="card flag row" onSubmit={add}>
         <input placeholder="Nama" value={f.nama} onChange={(e) => setF({ ...f, nama: e.target.value })} required />
         <input type="email" placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} required />
-        <input type="text" placeholder="Password (min 6)" minLength={6} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} required />
+        <input type="password" autoComplete="new-password" placeholder="Password awal (min 8)" minLength={8} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} required />
         <select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>
           <option value="teknisi">teknisi</option><option value="warehouse">warehouse</option><option value="admin">admin</option>
         </select>
@@ -81,47 +63,39 @@ export default function Users() {
               <td><button className="danger" disabled={me} title={me ? 'Akun Anda sendiri tidak bisa dihapus' : 'Hapus pengguna'} onClick={() => hapus(u)}>Hapus</button></td></tr>
           );
         })}</tbody></table></div>
-      <ResetData />
+      <Backup />
     </>
   );
 }
 
-// Reset data: hapus semua unit, event, dan kategori (akun pengguna TIDAK dihapus). Hanya admin (halaman ini khusus admin).
-function ResetData() {
+// Cadangan data: unduh semua data penting sebagai satu file JSON (disimpan di tempat aman milik kantor).
+function Backup() {
   const { profile } = useAuth();
-  const [open, setOpen] = useState(false);
-  const [kode, setKode] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   async function go() {
     setBusy(true); setMsg('');
     try {
-      const nodes = ['assets', 'events', 'kategori'];
+      const nodes = ['users', 'assets', 'events', 'serahTerima', 'checklist', 'transactions', 'laporanRusak', 'audit'];
       const snaps = await Promise.all(nodes.map((n) => get(ref(db, n))));
-      const up = {}; let n = 0;
-      nodes.forEach((node, i) => Object.keys(snaps[i].val() || {}).forEach((id) => { up[`${node}/${id}`] = null; n++; }));
-      if (n === 0) { setMsg('Data sudah kosong.'); }
-      else {
-        await update(ref(db), up);
-        try { await audit(profile.uid, 'reset_data', `${n} data dihapus`); } catch { /* opsional */ }
-        setMsg(`Selesai: ${n} data dihapus (unit, event, kategori). Segarkan halaman.`);
-      }
-      setKode(''); setOpen(false);
+      const data = Object.fromEntries(nodes.map((n, i) => [n, snaps[i].val() || {}]));
+      const blob = new Blob([JSON.stringify({ dibuat: new Date().toISOString(), data }, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `backup-event-control-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      try { await audit(profile.uid, 'backup', 'unduh cadangan JSON'); } catch { /* opsional */ }
+      setMsg('Cadangan diunduh. Simpan di tempat aman (bukan di perangkat ini saja).');
     } catch (e) { setMsg(e.message); }
     setBusy(false);
   }
   return (
-    <div className="card" style={{ marginTop: 28, borderColor: '#c0392b' }}>
-      <b className="err">Reset data (hati-hati)</b>
-      <p><small>Menghapus SEMUA unit (inventaris), event, dan kategori. Akun pengguna tidak ikut terhapus. Tidak bisa dibatalkan.</small></p>
-      {msg && <p role="status" className={/^Selesai|kosong/.test(msg) ? 'okmsg' : 'err'}>{msg}</p>}
-      {!open ? <button className="danger" onClick={() => setOpen(true)}>Reset semua data</button> : (
-        <div className="row">
-          <input aria-label="Ketik RESET" placeholder="Ketik RESET untuk lanjut" value={kode} onChange={(e) => setKode(e.target.value)} />
-          <button className="danger" disabled={busy || kode.trim() !== 'RESET'} onClick={go}>{busy ? 'Menghapus…' : 'Hapus sekarang'}</button>
-          <button className="ghost" disabled={busy} onClick={() => { setOpen(false); setKode(''); }}>Batal</button>
-        </div>
-      )}
+    <div className="card" style={{ marginTop: 28 }}>
+      <b>Cadangan data</b>
+      <p><small>Mengunduh pengguna, inventaris, event, serah terima, riwayat, dan audit dalam satu file JSON. Lakukan rutin (mis. mingguan) di samping backup otomatis Firebase.</small></p>
+      {msg && <p role="status" className="okmsg">{msg}</p>}
+      <button onClick={go} disabled={busy}>{busy ? 'Menyiapkan…' : 'Unduh cadangan (JSON)'}</button>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase.js';
 import { Logo } from '../components.jsx';
 import { Icon } from '../ui.jsx';
@@ -13,12 +13,20 @@ export default function Login({ error }) {
   const [show, setShow] = useState(false);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [info, setInfo] = useState('');
 
   async function submit(e) {
     e.preventDefault(); setBusy(true); setErr('');
     try { await signInWithEmailAndPassword(auth, email.trim(), pw); }
     catch { setErr('Email atau password salah.'); }
     setBusy(false);
+  }
+
+  async function lupa() {
+    setErr(''); setInfo('');
+    if (!email.trim()) { setErr('Isi email Anda dulu, lalu tekan “Lupa password”.'); return; }
+    try { await sendPasswordResetEmail(auth, email.trim()); } catch { /* sengaja diabaikan: jangan bocorkan apakah email terdaftar */ }
+    setInfo('Jika email terdaftar, tautan reset password sudah dikirim. Cek kotak masuk dan spam.');
   }
 
   return (
@@ -41,6 +49,8 @@ export default function Login({ error }) {
           <button type="button" className="lg-eye" aria-label={show ? 'Sembunyikan password' : 'Lihat password'} onClick={() => setShow(!show)}><Icon n={show ? 'eyeOff' : 'eye'} /></button>
         </div>
         {(err || error) && <p className="lg-err" role="alert">{err || error}</p>}
+        {info && <p role="status" style={{ color: '#2ee59d', margin: '4px 0' }}>{info}</p>}
+        <button type="button" className="ghost" style={{ alignSelf: 'flex-start' }} onClick={lupa}>Lupa password?</button>
         <button className="lg-btn" disabled={busy}>{busy ? 'Masuk…' : <>Masuk <Icon n="arrow" size={20} /></>}</button>
       </form>
       <div className="lg-chips" aria-hidden="true">

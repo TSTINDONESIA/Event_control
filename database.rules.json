@@ -8,6 +8,12 @@
         ".read": "auth!=null&&(auth.uid===$uid||root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true)",
         ".write": "root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true",
         ".validate": "newData.hasChildren(['nama','role','aktif'])",
+        "nama": {
+          ".validate": "newData.isString()&&newData.val().length>0&&newData.val().length<=100"
+        },
+        "aktif": {
+          ".validate": "newData.isBoolean()"
+        },
         "role": {
           ".validate": "newData.val().matches(/^(admin|warehouse|teknisi)$/)"
         },
@@ -20,7 +26,7 @@
     "assets": {
       ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
       "$id": {
-        ".write": "((root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true)||(root.child('users/'+auth.uid+'/role').val()==='teknisi'&&root.child('users/'+auth.uid+'/aktif').val()===true&&newData.child('eventId').val()===data.child('eventId').val()&&root.child('events/'+data.child('eventId').val()+'/teknisi/'+auth.uid).exists()&&((data.child('status').val()==='keluar'&&newData.child('status').val()==='diterima')||(data.child('status').val()==='diterima'&&(newData.child('status').val()==='digunakan'||newData.child('status').val()==='menunggu_kembali'))||(data.child('status').val()==='digunakan'&&newData.child('status').val()==='menunggu_kembali')))",
+        ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
         ".validate": "newData.hasChildren(['kode','status'])",
         "status": {
           ".validate": "newData.val().matches(/^(tersedia|dialokasikan|disiapkan|keluar|diterima|digunakan|menunggu_kembali|servis|rusak|hilang|pensiun)$/)"
@@ -50,40 +56,31 @@
         }
       }
     },
-    "assetBookings": {
-      ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
-      "$aid": {
-        ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
-        "$eid": {
-          ".validate": "newData.hasChildren(['mulai','selesai'])"
-        }
-      }
-    },
     "transactions": {
       ".read": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
+      ".indexOn": [
+        "assetId"
+      ],
       "$tx": {
-        ".write": "!data.exists()&&auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
-        ".validate": "newData.hasChildren(['tipe','assetId','petugas','waktu'])",
+        ".write": "!data.exists()&&(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
+        ".validate": "newData.hasChildren(['tipe','assetId','petugas','waktu'])&&newData.child('waktu').isNumber()",
         "petugas": {
           ".validate": "newData.val()===auth.uid"
         }
-      },
-      ".indexOn": [
-        "assetId"
-      ]
+      }
     },
     "audit": {
       ".read": "root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true",
       "$id": {
         ".write": "!data.exists()&&auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
-        ".validate": "newData.child('uid').val()===auth.uid"
+        ".validate": "newData.hasChildren(['uid','aksi','waktu'])&&newData.child('uid').val()===auth.uid&&newData.child('waktu').isNumber()"
       }
     },
     "laporanRusak": {
-      ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
+      ".read": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
       "$id": {
         ".write": "!data.exists()&&auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
-        ".validate": "newData.hasChildren(['assetId','uid','catatan','waktu'])&&newData.child('uid').val()===auth.uid"
+        ".validate": "newData.hasChildren(['assetId','uid','catatan','waktu'])&&newData.child('uid').val()===auth.uid&&newData.child('catatan').isString()&&newData.child('catatan').val().length<=1000"
       }
     },
     "serahTerima": {
@@ -99,31 +96,8 @@
       "$eid": {
         ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
         "$aid": {
-          ".write": "((root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true)||(root.child('events/'+$eid+'/teknisi/'+auth.uid).exists()&&root.child('users/'+auth.uid+'/aktif').val()===true)",
+          ".write": "((root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true)||(root.child('users/'+auth.uid+'/aktif').val()===true&&root.child('events/'+$eid+'/teknisi/'+auth.uid).exists())",
           ".validate": "newData.hasChildren(['ok','uid','waktu'])&&newData.child('uid').val()===auth.uid"
-        }
-      }
-    },
-    "kategori": {
-      ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
-      "$id": {
-        ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
-        ".validate": "newData.hasChildren(['nama'])"
-      }
-    },
-    "bulk": {
-      ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
-      "$id": {
-        ".write": "(root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true)||((root.child('users/'+auth.uid+'/role').val()==='warehouse'&&root.child('users/'+auth.uid+'/aktif').val()===true)&&newData.exists())",
-        ".validate": "newData.hasChildren(['nama','total'])&&newData.child('total').isNumber()&&newData.child('total').val()>=0"
-      }
-    },
-    "bulkEvent": {
-      ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
-      "$eid": {
-        "$bid": {
-          ".write": "((root.child('users/'+auth.uid+'/role').val()==='admin'&&root.child('users/'+auth.uid+'/aktif').val()===true)||(root.child('users/'+auth.uid+'/role').val()==='warehouse'&&root.child('users/'+auth.uid+'/aktif').val()===true))||(root.child('users/'+auth.uid+'/aktif').val()===true&&root.child('events/'+$eid+'/teknisi/'+auth.uid).exists()&&((data.child('tahap').val()==='keluar'&&newData.child('tahap').val()==='diterima')||(data.child('tahap').val()==='diterima'&&newData.child('tahap').val()==='kembali')))",
-          ".validate": "newData.hasChildren(['qty','mulai','selesai','tahap'])&&newData.child('qty').isNumber()&&newData.child('qty').val()>0&&newData.child('tahap').val().matches(/^(rencana|keluar|diterima|kembali|selesai)$/)"
         }
       }
     },
@@ -134,8 +108,8 @@
           "waktu"
         ],
         "$id": {
-          ".write": "auth!=null&&!data.exists()&&root.child('users/'+auth.uid+'/aktif').val()===true",
-          ".validate": "newData.hasChildren(['judul','pesan','waktu','dari'])&&newData.child('dari').val()===auth.uid"
+          ".write": "!data.exists()&&(root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true",
+          ".validate": "newData.hasChildren(['judul','pesan','waktu','dari'])&&newData.child('dari').val()===auth.uid&&newData.child('judul').val().length<=200&&newData.child('pesan').val().length<=600"
         }
       }
     },
@@ -146,8 +120,8 @@
           "waktu"
         ],
         "$id": {
-          ".write": "auth!=null&&!data.exists()&&root.child('users/'+auth.uid+'/aktif').val()===true",
-          ".validate": "newData.hasChildren(['judul','pesan','waktu','dari'])&&newData.child('dari').val()===auth.uid"
+          ".write": "!data.exists()&&root.child('users/'+auth.uid+'/aktif').val()===true&&($role==='admin'||$role==='warehouse')",
+          ".validate": "newData.hasChildren(['judul','pesan','waktu','dari'])&&newData.child('dari').val()===auth.uid&&newData.child('judul').val().length<=200&&newData.child('pesan').val().length<=600"
         }
       }
     },

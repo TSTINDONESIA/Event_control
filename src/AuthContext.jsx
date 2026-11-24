@@ -22,10 +22,8 @@ export function AuthProvider({ children }) {
           await signOut(auth);
           return;
         }
-        let sup = false; // akun kontrol utama: daftar di node superUsers (hanya bisa diisi lewat Console)
-        try { sup = (await get(ref(db, 'superUsers/' + u.uid))).val() === true; } catch { /* aturan belum dipublikasikan */ }
         setError('');
-        setS({ loading: false, user: u, profile: { ...p, uid: u.uid, super: sup } });
+        setS({ loading: false, user: u, profile: { ...p, uid: u.uid } });
       } catch (e) {
         setError('Gagal membaca profil: ' + e.message);
         await signOut(auth);
