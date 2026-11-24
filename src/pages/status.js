@@ -17,17 +17,16 @@ export const TIPE = {
   rusak: 'Ditandai rusak', pulih: 'Tersedia lagi', hilang: 'Ditandai hilang',
 };
 
-// tahap event (alur 5 langkah)
+// tahap event
 // rencana  : admin buat event, gudang menyiapkan alat (scan QR)
 // siap     : gudang menekan "Sudah disiapkan" (penyiapan dikunci)
-// dikirim  : gudang menekan "PDF Kirim ke teknisi"
-// diterima : teknisi menekan "Alat lengkap diterima"
-// kembali  : teknisi menekan "Kembalikan ke gudang" (menunggu gudang mengecek)
-// selesai  : gudang mencentang barang kembali (tanpa scan), unit masuk stok
+// dikirim  : gudang menekan "PDF Kirim ke teknisi"; teknisi hanya melihat, gudang menerima barang kembali (scan / centang)
+// diterima, kembali : tahap lama (data lama), diperlakukan sama seperti dikirim
+// selesai  : semua barang kembali diterima gudang, unit masuk stok
 export const TAHAP = {
   rencana:  { label: 'Gudang menyiapkan',        cls: 'dialokasikan' },
   siap:     { label: 'Sudah disiapkan',          cls: 'disiapkan' },
-  dikirim:  { label: 'Dikirim, tunggu teknisi',  cls: 'keluar' },
+  dikirim:  { label: 'Di teknisi (belum kembali)',  cls: 'keluar' },
   diterima: { label: 'Diterima teknisi',         cls: 'digunakan' },
   kembali:  { label: 'Dikembalikan, tunggu dicek gudang', cls: 'menunggu_kembali' },
   selesai:  { label: 'Selesai',                  cls: 'tersedia' },

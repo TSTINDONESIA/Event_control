@@ -6,17 +6,17 @@ React + Vite + Firebase (Auth + Realtime Database + Cloud Functions). Web (PWA) 
 ## Alur kerja
 1. **Admin** membuat event, menugaskan teknisi, mengisi kebutuhan alat (teks bebas, mis. `5 Delegate Mic`).
 2. **Gudang** menyiapkan alat dengan scan QR, lalu **Kirim ke teknisi** (tercatat + PDF).
-3. **Teknisi** cukup menekan *Alat lengkap diterima* (tanpa checklist), lalu *Kembalikan ke gudang*; boleh melapor alat rusak.
-4. **Gudang** mengecek fisik dan **mencentang** alat yang kembali di daftar (tanpa scan; tandai *Rusak* + catatan bila perlu), lalu *Terima ke stok*. Semua kembali, event selesai.
+3. **Teknisi** hanya melihat daftar alat (tanpa tombol terima/kembalikan); boleh melapor alat rusak.
+4. **Gudang** menerima barang kembali dengan memilih **Scan QR** atau **Centang saja** (tandai *Rusak* + catatan bila perlu), lalu *Terima ke stok*. Semua kembali, event selesai.
 5. **Admin** memantau lewat Dashboard dan Laporan; *Surat Jalan* siap cetak dari halaman event.
 
 | | admin | warehouse | teknisi |
 |---|:-:|:-:|:-:|
 | Buat/ubah/hapus event, tugaskan teknisi | ✓ | | |
-| Siapkan (scan), kirim, terima kembali (checklist) | ✓ | ✓ | |
+| Siapkan (scan), kirim, terima kembali (scan / centang) | ✓ | ✓ | |
 | Inventaris, daftar unit, cetak QR | ✓ | ✓ | |
 | Laporan, kelola pengguna, cadangan | ✓ | | |
-| Lihat event, tekan terima/kembali, lapor alat | ✓ | ✓ | ✓ |
+| Lihat event, lapor alat | ✓ | ✓ | ✓ |
 
 ## Pemasangan (project Firebase milik perusahaan)
 Gunakan project Firebase atas nama akun perusahaan (bukan akun pribadi), dengan paket **Blaze** (Cloud Functions mewajibkannya; pemakaian kecil biasanya tetap hampir gratis).

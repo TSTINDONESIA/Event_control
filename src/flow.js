@@ -1,5 +1,5 @@
-// Alur 5 langkah: admin buat event -> gudang siapkan (scan) + "Sudah disiapkan" + PDF kirim
-// -> teknisi "Alat lengkap diterima" -> teknisi "Kembalikan ke gudang" -> gudang centang kembali (tanpa scan) -> stok
+// Alur: admin buat event -> gudang siapkan (scan) + "Sudah disiapkan" + PDF kirim
+// -> teknisi hanya melihat daftar -> gudang menerima barang kembali (scan QR atau centang) -> stok -> event selesai
 import { ref, push, set, update, runTransaction } from 'firebase/database';
 import { db } from './firebase.js';
 import { audit } from './util.js';
@@ -57,13 +57,13 @@ export async function kirim(units, ev, profile, items = {}) {
     });
     await update(ref(db, 'events/' + ev.id), { tahap: 'dikirim', dikirimWaktu: Date.now(), dikirimOleh: profile.nama });
     audit(profile.uid, 'kirim_teknisi', `${ev.nama}: ${ok.length} unit`).catch(() => {});
-    notifTeknisi(profile, ev, 'Alat dikirim: ' + ev.nama, `${ok.length} unit alat dikirim gudang. Cek dan tekan “Alat lengkap diterima”.`);
+    notifTeknisi(profile, ev, 'Alat dikirim: ' + ev.nama, `${ok.length} unit alat dikirim gudang. Lihat daftarnya di aplikasi.`);
     notifRole(profile, 'admin', 'Alat dikirim: ' + ev.nama, `${profile.nama} mengirim ${ok.length} unit ke teknisi.`, ev.id);
   }
   return { ok, gagal };
 }
 
-// 3) Gudang menerima alat kembali (checklist, tanpa scan): baik -> tersedia, rusak -> servis (masuk laporan kerusakan)
+// 3) Gudang menerima alat kembali (scan QR atau checklist): baik -> tersedia, rusak -> servis (masuk laporan kerusakan)
 export async function terimaKembali(a, ev, profile, { rusak = false, catatan = '' } = {}) {
   await ubah(a, ['keluar'], rusak ? 'servis' : 'tersedia', null);
   await catat(a, rusak ? 'rusak' : 'masuk', profile, { eventId: ev.id, kondisi: rusak ? 'rusak' : 'baik', ...(catatan.trim() ? { catatan: catatan.trim() } : {}) });
@@ -139,34 +139,6 @@ export async function bukaGudang(ev, g, profile) {
     [`events/${ev.id}/siapOleh`]: null,
   });
   audit(profile.uid, 'gudang_buka', `${ev.nama}: Gudang ${g}`).catch(() => {});
-}
-
-// Teknisi: "Alat lengkap diterima" (dikirim -> diterima)
-export async function terimaTeknisi(ev, jumlah, profile) {
-  const key = push(ref(db, `serahTerima/${ev.id}`)).key;
-  await update(ref(db), {
-    [`events/${ev.id}/tahap`]: 'diterima',
-    [`events/${ev.id}/diterimaWaktu`]: Date.now(),
-    [`events/${ev.id}/diterimaOleh`]: profile.nama,
-    [`serahTerima/${ev.id}/${key}`]: { tipe: 'terima', uid: profile.uid, nama: profile.nama, waktu: Date.now(), jumlah },
-  });
-  audit(profile.uid, 'teknisi_terima', `${ev.nama}: ${jumlah} unit`).catch(() => {});
-  notifRole(profile, 'warehouse', 'Alat diterima: ' + ev.nama, `${profile.nama} menerima ${jumlah} unit.`, ev.id);
-  notifRole(profile, 'admin', 'Alat diterima: ' + ev.nama, `${profile.nama} menerima ${jumlah} unit.`, ev.id);
-}
-
-// Teknisi: "Kembalikan ke gudang" (diterima -> kembali)
-export async function kembalikanKeGudang(ev, profile) {
-  const key = push(ref(db, `serahTerima/${ev.id}`)).key;
-  await update(ref(db), {
-    [`events/${ev.id}/tahap`]: 'kembali',
-    [`events/${ev.id}/kembaliWaktu`]: Date.now(),
-    [`events/${ev.id}/kembaliOleh`]: profile.nama,
-    [`serahTerima/${ev.id}/${key}`]: { tipe: 'kembali', uid: profile.uid, nama: profile.nama, waktu: Date.now() },
-  });
-  audit(profile.uid, 'teknisi_kembalikan', ev.nama).catch(() => {});
-  notifRole(profile, 'warehouse', 'Alat dikembalikan: ' + ev.nama, `${profile.nama} mengembalikan alat. Cek dan centang di gudang untuk menerima.`, ev.id);
-  notifRole(profile, 'admin', 'Alat dikembalikan: ' + ev.nama, `${profile.nama} mengembalikan alat ke gudang.`, ev.id);
 }
 
 // Teknisi: laporkan alat rusak / perlu dicek -> masuk laporan kerusakan + notifikasi ke gudang dan admin

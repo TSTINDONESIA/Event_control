@@ -100,7 +100,7 @@ function Warehouse({ a, evs, t }) {
   const cnt = (s) => a.filter((x) => x.status === s).length;
   const soon = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
   const keluarList = evs.filter((e) => e.selesai >= t && e.mulai <= soon).sort((x, y) => x.mulai.localeCompare(y.mulai));
-  const back = evs.filter((e) => e.tahap === 'kembali');
+  const back = evs.filter((e) => ['dikirim', 'diterima', 'kembali'].includes(e.tahap));
   return (
     <>
       <div className="tiles stagger">
@@ -118,8 +118,8 @@ function Warehouse({ a, evs, t }) {
               <td style={{ minWidth: 150 }}><Progress value={sent} max={Math.max(prep, all.length)} label={false} yellow /></td></tr>;
           })}</tbody></table></div>
       )}
-      <h2>Pengembalian: menunggu dicek gudang</h2>
-      {back.length === 0 ? <EmptyState icon="warehouse">Tidak ada event yang menunggu dicek kembali.</EmptyState> : (
+      <h2>Pengembalian: barang masih di teknisi</h2>
+      {back.length === 0 ? <EmptyState icon="warehouse">Tidak ada barang yang masih di teknisi.</EmptyState> : (
         <div className="tbl"><table><thead><tr><th>Event</th><th>Unit di teknisi</th><th></th></tr></thead>
           <tbody>{back.map((e) => <tr key={e.id}><td>{e.nama}</td><td>{a.filter((x) => x.eventId === e.id && x.status === 'keluar').length}</td><td><Link className="btn" to={'/event/' + e.id}>Cek kembali</Link></td></tr>)}</tbody></table></div>
       )}

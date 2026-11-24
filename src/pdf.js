@@ -182,7 +182,7 @@ export function kirimPdf({ nama, lokasi, tanggal, teknisi, gudang, waktu, permin
     units.map((u, i) => [String(i + 1), u.kode, u.nama || '', u.kategori || '-']),
   );
   d.gap(10);
-  d.kv('Catatan', 'Teknisi mengecek alat di aplikasi lalu menekan "Alat lengkap diterima".');
+  d.kv('Catatan', 'Teknisi dapat melihat daftar alat di aplikasi. Pengembalian dicek dan diterima oleh gudang.');
   return d.toBlob();
 }
 

@@ -4,7 +4,7 @@ import { ref, push, set, remove } from 'firebase/database';
 import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
 import { useVal, list, range, audit, fmt } from '../util.js';
-import { siapkan, batalSiapkan, kirim, terimaKembali, selesaikanEvent, selesaiSiapkan, bukaPenyiapan, tutupGudang, bukaGudang, terimaTeknisi, kembalikanKeGudang, laporAlat } from '../flow.js';
+import { siapkan, batalSiapkan, kirim, terimaKembali, selesaikanEvent, selesaiSiapkan, bukaPenyiapan, tutupGudang, bukaGudang, laporAlat } from '../flow.js';
 import { norm, TAHAP } from './status.js';
 import { kirimPdf, bagikanPdf, fileName } from '../pdf.js';
 import { Band, Badge, Loading } from '../components.jsx';
@@ -40,6 +40,7 @@ export default function EventDetail() {
   const serah = useVal('serahTerima/' + id);
   const users = useVal(isAdmin ? 'users' : 'users/' + profile.uid);
   const [mode, setMode] = useState('');            // '' | 'siapkan1' | 'siapkan2'
+  const [retMode, setRetMode] = useState('centang'); // cara gudang menerima barang kembali: 'centang' | 'scan'
   const [ret, setRet] = useState({});             // checklist gudang saat barang kembali: { [unitId]: { ok, rusak, catatan } }
   const [need, setNeed] = useState({ kategori: '', jumlah: 1 });
   const [msg, setMsg] = useState('');
@@ -71,9 +72,10 @@ export default function EventDetail() {
   const scanned = planned.concat(sudahKembali);
   const rows = rekap(scanned, tambahan);   // ber-QR: otomatis dari scan; kabel: manual
   const isTek = !!ev.teknisi?.[profile.uid];
-  const canTek = isTek || isAdmin;               // aksi teknisi (admin boleh menggantikan)
+  const canTek = isTek || isAdmin;               // teknisi hanya boleh melihat dan melapor alat (admin sama)
   const canEditKb = isGudang && tahap === 'rencana';
   const nRet = masihDiTeknisi.filter((a) => ret[a.id]?.ok).length;
+  const fasePulang = ['dikirim', 'diterima', 'kembali'].includes(tahap);   // barang di teknisi, gudang bisa menerima kembali
 
   // konfirmasi ketuk dua kali (confirm() bawaan browser sering diblokir di HP)
   const tap = (key, fn) => () => { if (conf === key) { setConf(''); fn(); } else { setConf(key); setMsg(''); setOk(''); } };
@@ -95,6 +97,13 @@ export default function EventDetail() {
       if (tahap !== 'rencana' || sg['g' + g]) throw new Error(`Penyiapan Gudang ${g} sudah ditutup.`);
       if (gudangOf(a.kategori) !== g && !isAdmin) throw new Error(`${a.kode} milik Gudang ${gudangOf(a.kategori)}. Scan oleh petugas Gudang ${gudangOf(a.kategori)}.`);
       if (norm(a.status) !== 'tersedia') throw new Error(`${a.kode} tidak bisa disiapkan: status “${norm(a.status)}”${a.eventId && a.eventId !== id ? ' (dipakai event lain)' : a.eventId === id ? ' (sudah di event ini)' : ''}.`);
+    } else if (isGudang && fasePulang && retMode === 'scan') {
+      const u = masihDiTeknisi.find((x) => x.id === a.id);
+      if (!u) {
+        if (sudahKembali.some((x) => x.id === a.id)) throw new Error(`${a.kode} sudah diterima kembali.`);
+        throw new Error(`${a.kode} bukan alat event ini yang sedang di teknisi.`);
+      }
+      if (ret[a.id]?.ok) throw new Error(`${a.kode} sudah dicentang.`);
     } else throw new Error('Pilih Scan Gudang dulu.');
     return { title: a.nama || a.kode, sub: `${a.kode} · ${a.kategori || '-'} · Gudang ${gudangOf(a.kategori)}`, data: a };
   }
@@ -104,6 +113,9 @@ export default function EventDetail() {
     if (mode.startsWith('siapkan')) {
       await siapkan(a, ev, profile);
       setOk(`✓ ${a.kode} ${a.nama} siap (Gudang ${gudangOf(a.kategori)}).`);
+    } else if (retMode === 'scan') {
+      setR(a, { ok: true });
+      setOk(`✓ ${a.kode} ${a.nama || ''} dicentang kembali. Tekan “Terima ke stok” bila sudah selesai.`);
     }
   }
 
@@ -135,14 +147,6 @@ export default function EventDetail() {
   }, 'Terkirim ke teknisi. PDF dibuat, kirim lewat WhatsApp bila perlu.');
 
   const doUlangPdf = () => run(() => bagikanPdf(buatPdf(sent, ev.dikirimWaktu, ev.dikirimOleh), pdfName, 'Alat ' + ev.nama));
-
-  // ---- teknisi ----
-  const doTerima = () => run(async () => {
-    await terimaTeknisi(ev, sent.length, profile);
-  }, 'Alat lengkap diterima. Selamat bertugas.');
-  const doKembalikan = () => run(async () => {
-    await kembalikanKeGudang(ev, profile);
-  }, 'Sudah dikembalikan. Gudang akan mengecek barang yang kembali.');
 
   // ---- gudang: terima barang kembali lewat checklist (tanpa scan) ----
   const setR = (a, patch) => setRet((x) => ({ ...x, [a.id]: { ...(x[a.id] || {}), ...patch } }));
@@ -176,9 +180,7 @@ export default function EventDetail() {
   const steps = [
     ['Event dibuat admin', true, ev.dibuatOleh ? `${ev.dibuatOleh}${ev.dibuat ? ' · ' + fmt(ev.dibuat) : ''}` : ''],
     ['Gudang menyiapkan & kirim PDF ke teknisi', at >= 2, ev.dikirimWaktu ? `${ev.dikirimOleh || ''} · ${fmt(ev.dikirimWaktu)}` : at === 1 ? 'Sudah disiapkan, tinggal kirim PDF' : at === 0 ? `Gudang 1: ${sg.g1 ? 'selesai' : 'belum'} · Gudang 2: ${sg.g2 ? 'selesai' : 'belum'}` : ''],
-    ['Teknisi: alat lengkap diterima', at >= 3, ev.diterimaWaktu ? `${ev.diterimaOleh || ''} · ${fmt(ev.diterimaWaktu)}` : ''],
-    ['Teknisi: kembalikan ke gudang', at >= 4, ev.kembaliWaktu ? `${ev.kembaliOleh || ''} · ${fmt(ev.kembaliWaktu)}` : ''],
-    ['Gudang: centang barang kembali, masuk stok', at >= 5, ev.selesaiWaktu ? fmt(ev.selesaiWaktu) : at === 4 ? `${masihDiTeknisi.length} unit belum dicentang` : ''],
+    ['Gudang: terima barang kembali (scan / centang), masuk stok', at >= 5, ev.selesaiWaktu ? fmt(ev.selesaiWaktu) : at >= 2 ? `${masihDiTeknisi.length} unit masih di teknisi` : ''],
   ];
   const nowIdx = steps.findIndex((s) => !s[1]);
 
@@ -230,17 +232,18 @@ export default function EventDetail() {
                 </div>
               </div>
             )}
-            {tahap === 'dikirim' && (
-              <div className="act"><p><b>Menunggu teknisi</b> menekan “Alat lengkap diterima”.</p>
-                <button className="ghost" disabled={busy} onClick={doUlangPdf}>Unduh / kirim ulang PDF</button></div>
-            )}
-            {tahap === 'diterima' && <div className="act"><p><b>Alat sedang bersama teknisi.</b> Menunggu teknisi menekan “Kembalikan ke gudang”.</p></div>}
-            {tahap === 'kembali' && (
+            {fasePulang && (
               <div className="act">
-                <p><b>Teknisi sudah mengembalikan.</b> Cek fisik alatnya, lalu centang yang sudah diterima ({masihDiTeknisi.length} belum diterima; Gudang 1: {masihDiTeknisi.filter((a) => gudangOf(a.kategori) === 1).length}, Gudang 2: {masihDiTeknisi.filter((a) => gudangOf(a.kategori) === 2).length}). Tidak perlu scan.</p>
+                {tahap === 'dikirim' && <div style={{ marginBottom: 10 }}><button className="ghost" disabled={busy} onClick={doUlangPdf}>Unduh / kirim ulang PDF</button></div>}
+                <p><b>Terima barang kembali.</b> {masihDiTeknisi.length} unit masih di teknisi (Gudang 1: {masihDiTeknisi.filter((a) => gudangOf(a.kategori) === 1).length}, Gudang 2: {masihDiTeknisi.filter((a) => gudangOf(a.kategori) === 2).length}). Pilih cara: scan QR tiap alat, atau cek fisik lalu centang di daftar.</p>
                 {masihDiTeknisi.length > 0 && (
                   <>
-                    <div className="row">
+                    <div className="row" role="group" aria-label="Cara terima barang kembali">
+                      <button type="button" className={'big' + (retMode === 'centang' ? ' dark' : ' ghost')} aria-pressed={retMode === 'centang'} onClick={() => setRetMode('centang')}>Centang saja</button>
+                      <button type="button" className={'big' + (retMode === 'scan' ? ' dark' : ' ghost')} aria-pressed={retMode === 'scan'} onClick={() => { unlockBeep(); setRetMode('scan'); }}>Scan QR</button>
+                    </div>
+                    {retMode === 'scan' && <Scanner check={cekScan} onConfirm={prosesScan} confirmLabel="Centang" />}
+                    <div className="row" style={{ marginTop: 10 }}>
                       <button type="button" className="ghost" disabled={busy} onClick={() => setRet(Object.fromEntries(masihDiTeknisi.map((a) => [a.id, { ...(ret[a.id] || {}), ok: true }])))}>Centang semua</button>
                       <button type="button" className="ghost" disabled={busy} onClick={() => setRet({})}>Kosongkan</button>
                     </div>
@@ -269,21 +272,9 @@ export default function EventDetail() {
           </>
         )}
 
-        {/* ===== Aksi teknisi ===== */}
-        {canTek && tahap === 'dikirim' && (
-          <div className="act">
-            <p><b>Periksa alat yang dikirim gudang</b> sesuai daftar di bawah. Jika lengkap, tekan terima. Ada yang kurang atau rusak? Tekan “Lapor” pada unitnya, atau hubungi gudang.</p>
-            <button className={'big' + (conf === 'terima' ? ' dark' : '')} disabled={busy} onClick={tap('terima', doTerima)}>{lbl('terima', `Alat lengkap diterima (${sent.length} unit)`)}</button>
-          </div>
-        )}
-        {canTek && tahap === 'diterima' && (
-          <div className="act">
-            <p><b>Event selesai?</b> Kembalikan semua alat ke gudang.</p>
-            <button className={'big' + (conf === 'kembali' ? ' dark' : '')} disabled={busy} onClick={tap('kembali', doKembalikan)}>{lbl('kembali', 'Kembalikan ke gudang')}</button>
-          </div>
-        )}
+        {/* ===== Teknisi: hanya melihat (tanpa tombol terima / kembalikan) ===== */}
         {!isGudang && isTek && ['rencana', 'siap'].includes(tahap) && <div className="act"><p><b>Gudang sedang menyiapkan alat.</b> Daftar lengkap muncul setelah PDF dikirim.</p></div>}
-        {!isGudang && isTek && tahap === 'kembali' && <div className="act"><p><b>Menunggu gudang</b> mengecek barang yang kembali.</p></div>}
+        {!isGudang && isTek && fasePulang && <div className="act"><p><b>Alat ada di Anda.</b> Daftar alat ada di bawah. Ada yang rusak atau kurang? Tekan “Lapor” pada unitnya. Pengembalian dicek langsung oleh gudang.</p></div>}
 
         <div className="card">
           <b>Teknisi bertugas</b>

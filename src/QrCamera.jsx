@@ -18,7 +18,8 @@ const DEDUP_MS = 2500;
 
 const CSS = `
 .qrc{display:flex;flex-direction:column;gap:10px;max-width:440px}
-.qrc .scan-box{aspect-ratio:1/1;max-height:60vh;width:100%;touch-action:none}
+/* selalu persegi: lebar dibatasi 60% tinggi layar (bukan tinggi), jadi rasio 1:1 tidak pernah terpotong */
+.qrc .scan-box{aspect-ratio:1/1;width:min(100%,60vh);height:auto;max-height:none;touch-action:none}
 .qrc video{width:100%;height:100%;object-fit:cover;display:block}
 .qrc .qrc-wait{position:absolute;inset:0;display:grid;place-items:center;color:#fff;background:rgba(2,7,15,.6);z-index:4;font-size:14px}
 .qrc .qrc-zoom{display:flex;align-items:center;gap:8px}
