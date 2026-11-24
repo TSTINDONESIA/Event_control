@@ -1,33 +1,12 @@
-import { useEffect, useId, useRef, useState } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
-import CameraZoom, { ScanBoxPicker, scanConfig, useScanBox } from './CameraZoom.jsx';
+import { useRef, useState } from 'react';
+import QrCamera from './QrCamera.jsx';
+import { bunyi, unlockBeep } from './sound.js';
 
-// ---- bunyi beep (Web Audio; di iPhone harus "dibuka" lewat sentuhan, lihat unlockBeep) ----
-let actx = null;
-export function unlockBeep() {
-  try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    if (!actx) actx = new AC();
-    if (actx.state === 'suspended') actx.resume();
-  } catch { /* abaikan */ }
-}
-function beep(freq, ms, vibrate) {
-  try {
-    unlockBeep();
-    if (actx) {
-      const o = actx.createOscillator(); const g = actx.createGain();
-      o.type = 'square'; o.frequency.value = freq; g.gain.value = 0.25;
-      o.connect(g); g.connect(actx.destination);
-      o.start(); o.stop(actx.currentTime + ms / 1000);
-    }
-  } catch { /* abaikan */ }
-  try { navigator.vibrate && navigator.vibrate(vibrate); } catch { /* abaikan */ }
-}
-export const bunyi = { scan: () => beep(1400, 130, 60), ok: () => beep(1900, 90, 40), gagal: () => beep(280, 320, [80, 40, 80]) };
+// bunyi dan unlockBeep tetap bisa diimpor dari sini (kompatibel dengan kode lama)
+export { bunyi, unlockBeep };
 
 const CSS = `
-.scan-box.paused{opacity:.25;filter:grayscale(1)}
+.qrc .scan-box.paused{opacity:.25;filter:grayscale(1)}
 .scan-hint{margin:10px 0;font-size:14px;color:var(--text-mute)}
 .scan-confirm{max-width:440px;border:1px solid rgba(255,198,41,.45);border-left:4px solid var(--gold);border-radius:var(--r-lg);background:var(--g-panel);padding:14px;margin:10px 0;box-shadow:var(--shadow);animation:fadeUp .3s var(--ease)}
 .scan-confirm small{display:block;font-weight:700;letter-spacing:.1em;color:var(--cyan)}
@@ -39,7 +18,6 @@ const CSS = `
 //  check(teks)    -> { title, sub, data } atau melempar Error (unit tidak valid)
 //  onConfirm(data) -> menyimpan; melempar Error bila gagal
 export default function Scanner({ check, onConfirm, confirmLabel = 'Input', placeholder = 'Input manual: kode unit (mis. LAM-0001)' }) {
-  const rid = 'rd' + useId().replace(/[^A-Za-z0-9]/g, '');
   const chk = useRef(check); chk.current = check;
   const cnf = useRef(onConfirm); cnf.current = onConfirm;
   const stage = useRef('scan');                       // 'scan' | 'wait'
@@ -47,18 +25,12 @@ export default function Scanner({ check, onConfirm, confirmLabel = 'Input', plac
   const [pending, setPending] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [camErr, setCamErr] = useState('');
   const [manual, setManual] = useState('');
-  const qrRef = useRef(null);
-  const boxRef = useRef(null);
-  const [camOn, setCamOn] = useState(false);
-  const [boxKey, pickBox, qrbox] = useScanBox();
-  const qb = useRef(qrbox); qb.current = qrbox;
 
   const handle = async (text) => {
     if (stage.current !== 'scan') return;
     const now = Date.now();
-    if (last.current.t === text && now - last.current.at < 2500) { last.current.at = now; return; } // QR yang sama masih di depan kamera
+    if (last.current.t === text && now - last.current.at < 2500) { last.current.at = now; return; } // kode yang sama masih di depan kamera
     last.current = { t: text, at: now };
     stage.current = 'wait'; setErr('');
     try {
@@ -78,16 +50,6 @@ export default function Scanner({ check, onConfirm, confirmLabel = 'Input', plac
   };
   const batal = () => { last.current = { t: pending.text, at: Date.now() }; setPending(null); stage.current = 'scan'; };
 
-  useEffect(() => {
-    setCamOn(false);
-    const q = new Html5Qrcode(rid);
-    let dead = false, on = false;
-    q.start({ facingMode: 'environment' }, scanConfig(qb.current), (t) => hr.current(t), () => {})
-      .then(() => { on = true; if (dead) { q.stop().then(() => q.clear()).catch(() => {}); return; } qrRef.current = q; setCamOn(true); })
-      .catch((e) => setCamErr('Kamera tidak bisa dibuka (' + (e?.message || e) + '). Izinkan kamera atau pakai input manual.'));
-    return () => { dead = true; qrRef.current = null; if (on) q.stop().then(() => q.clear()).catch(() => {}); };
-  }, [rid, boxKey]);
-
   return (
     <div onPointerDown={unlockBeep}>
       <style>{CSS}</style>
@@ -103,11 +65,7 @@ export default function Scanner({ check, onConfirm, confirmLabel = 'Input', plac
         </div>
       )}
       {err && <p className="err" role="alert">{err}</p>}
-      <div ref={boxRef} className={'scan-box' + (pending ? ' paused' : '')}><div id={rid} />{!pending && !camErr && <span className="scan-line" />}</div>
-      <CameraZoom qr={qrRef} on={camOn} boxRef={boxRef} />
-      <ScanBoxPicker value={boxKey} onPick={pickBox} />
-      {!pending && !camErr && <p className="scan-hint">Arahkan kamera ke QR. Setelah bunyi beep, cek nama lalu tekan {confirmLabel}.</p>}
-      {camErr && <p className="err" role="alert">{camErr}</p>}
+      <QrCamera onCode={(t) => hr.current(t)} paused={!!pending} hint={!pending ? `Arahkan kamera ke QR. Setelah bunyi beep, cek nama lalu tekan ${confirmLabel}.` : ''} />
       <form className="card row" onSubmit={(e) => { e.preventDefault(); const v = manual.trim(); if (v) { last.current = { t: '', at: 0 }; setManual(''); hr.current(v); } }}>
         <input aria-label="Kode unit" style={{ flex: 1, minWidth: 200 }} placeholder={placeholder} value={manual} onChange={(e) => setManual(e.target.value)} />
         <button>OK</button>

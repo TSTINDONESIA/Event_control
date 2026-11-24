@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Html5Qrcode } from 'html5-qrcode';
+import QrCamera from '../QrCamera.jsx';
+import { bunyi, unlockBeep } from '../sound.js';
 import { ref, runTransaction } from 'firebase/database';
 import { db } from '../firebase.js';
 import { useAuth } from '../AuthContext.jsx';
@@ -18,7 +19,6 @@ export default function Daftar() {
   curRef.current = cur;
   const [known, setKnown] = useState(null);
   const [err, setErr] = useState('');
-  const [camErr, setCamErr] = useState('');
   const [f, setF] = useState({ nama: '', kategori: '' }); // diingat untuk unit berikutnya
   const [done, setDone] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -32,20 +32,12 @@ export default function Daftar() {
     last.current = { t: text, at: now };
     if (curRef.current) return; // sedang mengisi form
     const id = labelId(text);
-    if (!id) { setKnown(null); setErr('Bukan label TST: ' + String(text).slice(0, 40)); return; }
+    if (!id) { bunyi.gagal(); setKnown(null); setErr('Bukan label TST: ' + String(text).slice(0, 40)); return; }
+    bunyi.scan();
     const hit = latest.current[id];
     if (hit) { setErr(''); setKnown({ id, kode: hit.kode, nama: hit.nama }); return; }
     setErr(''); setKnown(null); setCur(id);
   };
-
-  useEffect(() => {
-    const q = new Html5Qrcode('reader-daftar');
-    let dead = false, on = false;
-    q.start({ facingMode: 'environment' }, { fps: 10, qrbox: 240 }, (t) => scanRef.current(t), () => {})
-      .then(() => { on = true; if (dead) q.stop().then(() => q.clear()).catch(() => {}); })
-      .catch((e) => setCamErr('Kamera tidak bisa dibuka (' + (e?.message || e) + '). Izinkan kamera di browser, atau buka label dengan kamera HP biasa.'));
-    return () => { dead = true; if (on) q.stop().then(() => q.clear()).catch(() => {}); };
-  }, []);
 
   async function save(e) {
     e.preventDefault(); setBusy(true); setErr('');
@@ -66,10 +58,9 @@ export default function Daftar() {
   }
 
   return (
-    <div className="reg">
+    <div className="reg" onPointerDown={unlockBeep}>
       <div>
-        <div className="scan-box"><div id="reader-daftar" /></div>
-        {camErr && <p className="err" role="alert">{camErr}</p>}
+        <QrCamera onCode={(t) => scanRef.current(t)} paused={!!cur} />
         <p><small>Arahkan kamera ke label yang sudah ditempel di barang. Label yang belum terdaftar akan memunculkan form.</small></p>
       </div>
       <div>

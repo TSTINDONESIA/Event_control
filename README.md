@@ -49,6 +49,14 @@ npm run build
 ```
 Kamera/scan QR butuh HTTPS (atau `localhost`).
 
+## Pemindai QR (cepat, dari SIS)
+Semua scan (menyiapkan, menerima kembali, cek unit, daftar unit) memakai `src/QrCamera.jsx`:
+- Kamera dibuka langsung dan dibaca tiap frame video; hanya bingkai tengah (±70%) yang dibaca.
+- Decoder berurutan: BarcodeDetector bawaan browser (Android/Chrome) -> ZXing WebAssembly (`barcode-detector`, untuk iPhone/Safari) -> `jsqr`.
+- Fokus kontinu, ketuk layar untuk fokus ulang, zoom (cubit/tombol/slider), beep dua nada + getar.
+- Mengenali QR, serta Code 128 / EAN-13 / Code 39 bila decoder mendukung.
+- Catatan: ZXing WebAssembly diunduh dari CDN saat pertama dipakai di perangkat tanpa BarcodeDetector (iPhone). Perlu internet; bila gagal otomatis memakai jsQR.
+
 ## Operasional
 - **Backup**: menu Pengguna -> *Unduh cadangan (JSON)*, lakukan rutin; aktifkan juga backup otomatis Realtime Database di Firebase.
 - **Akun**: password awal dari admin wajib diganti saat login pertama (minimal 8 karakter). Pengguna dihapus lewat menu Pengguna (akun login ikut terhapus). Lupa password: tombol di layar login.
@@ -58,5 +66,5 @@ Kamera/scan QR butuh HTTPS (atau `localhost`).
 - Teknisi masih bisa *membaca* semua event dan unit (bukan hanya tugasnya); penulisan sudah dibatasi. Pembatasan baca per teknisi butuh perubahan struktur data.
 - Notifikasi push hanya Android (APK). Di web, notifikasi muncul di dalam aplikasi.
 - Kabel/barang tanpa QR dihitung manual oleh gudang.
-- Test otomatis baru mencakup fungsi murni; alur Firebase belum diuji dengan Firebase Emulator.
+- Test otomatis baru mencakup fungsi murni (pemindai kamera sendiri belum diuji di perangkat nyata: coba di HP Android dan iPhone); alur Firebase belum diuji dengan Firebase Emulator.
 - Belum diuji build/jalan di lingkungan nyata: jalankan `npm install && npm test && npm run build` lebih dulu.
