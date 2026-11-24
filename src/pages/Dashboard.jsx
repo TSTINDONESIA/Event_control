@@ -119,17 +119,15 @@ function Warehouse({ a, evs, t }) {
           })}</tbody></table></div>
       )}
       <h2>Pengembalian: menunggu dicek gudang</h2>
-      {back.length === 0 ? <EmptyState icon="warehouse">Tidak ada event yang menunggu scan kembali.</EmptyState> : (
+      {back.length === 0 ? <EmptyState icon="warehouse">Tidak ada event yang menunggu dicek kembali.</EmptyState> : (
         <div className="tbl"><table><thead><tr><th>Event</th><th>Unit di teknisi</th><th></th></tr></thead>
-          <tbody>{back.map((e) => <tr key={e.id}><td>{e.nama}</td><td>{a.filter((x) => x.eventId === e.id && x.status === 'keluar').length}</td><td><Link className="btn" to={'/event/' + e.id}>Scan kembali</Link></td></tr>)}</tbody></table></div>
+          <tbody>{back.map((e) => <tr key={e.id}><td>{e.nama}</td><td>{a.filter((x) => x.eventId === e.id && x.status === 'keluar').length}</td><td><Link className="btn" to={'/event/' + e.id}>Cek kembali</Link></td></tr>)}</tbody></table></div>
       )}
     </>
   );
 }
 
 function TechEvent({ e, units }) {
-  const cl = useVal('checklist/' + e.id) || {};
-  const done = units.filter((u) => cl[u.id]?.ok).length;
   const got = units.filter((u) => u.status === 'keluar').length;
   return (
     <div className="card flag">
@@ -137,7 +135,6 @@ function TechEvent({ e, units }) {
       <small>{range(e)}</small>
       <div style={{ marginTop: 12, display: 'grid', gap: 12 }}>
         <Progress value={got} max={units.length} label="Barang dari gudang" />
-        <Progress value={done} max={units.length} label="Checklist setup" yellow />
       </div>
     </div>
   );

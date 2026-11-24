@@ -92,15 +92,6 @@
         }
       }
     },
-    "checklist": {
-      "$eid": {
-        ".read": "auth!=null&&root.child('users/'+auth.uid+'/aktif').val()===true",
-        "$aid": {
-          ".write": "((root.child('users/'+auth.uid+'/role').val()==='admin'||root.child('users/'+auth.uid+'/role').val()==='warehouse')&&root.child('users/'+auth.uid+'/aktif').val()===true)||(root.child('users/'+auth.uid+'/aktif').val()===true&&root.child('events/'+$eid+'/teknisi/'+auth.uid).exists())",
-          ".validate": "newData.hasChildren(['ok','uid','waktu'])&&newData.child('uid').val()===auth.uid"
-        }
-      }
-    },
     "notifications": {
       "$uid": {
         ".read": "auth!=null&&auth.uid===$uid&&root.child('users/'+auth.uid+'/aktif').val()===true",

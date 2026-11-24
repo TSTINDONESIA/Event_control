@@ -76,7 +76,7 @@ function Backup() {
   async function go() {
     setBusy(true); setMsg('');
     try {
-      const nodes = ['users', 'assets', 'events', 'serahTerima', 'checklist', 'transactions', 'laporanRusak', 'audit'];
+      const nodes = ['users', 'assets', 'events', 'serahTerima', 'transactions', 'laporanRusak', 'audit'];
       const snaps = await Promise.all(nodes.map((n) => get(ref(db, n))));
       const data = Object.fromEntries(nodes.map((n, i) => [n, snaps[i].val() || {}]));
       const blob = new Blob([JSON.stringify({ dibuat: new Date().toISOString(), data }, null, 2)], { type: 'application/json' });

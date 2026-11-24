@@ -6,17 +6,17 @@ React + Vite + Firebase (Auth + Realtime Database + Cloud Functions). Web (PWA) 
 ## Alur kerja
 1. **Admin** membuat event, menugaskan teknisi, mengisi kebutuhan alat (teks bebas, mis. `5 Delegate Mic`).
 2. **Gudang** menyiapkan alat dengan scan QR, lalu **Kirim ke teknisi** (tercatat + PDF).
-3. **Teknisi** menekan *Alat lengkap diterima*, lalu *Kembalikan ke gudang*; boleh melapor alat rusak.
-4. **Gudang** scan alat yang kembali (tandai rusak bila perlu). Semua kembali, event selesai.
+3. **Teknisi** cukup menekan *Alat lengkap diterima* (tanpa checklist), lalu *Kembalikan ke gudang*; boleh melapor alat rusak.
+4. **Gudang** mengecek fisik dan **mencentang** alat yang kembali di daftar (tanpa scan; tandai *Rusak* + catatan bila perlu), lalu *Terima ke stok*. Semua kembali, event selesai.
 5. **Admin** memantau lewat Dashboard dan Laporan; *Surat Jalan* siap cetak dari halaman event.
 
 | | admin | warehouse | teknisi |
 |---|:-:|:-:|:-:|
 | Buat/ubah/hapus event, tugaskan teknisi | ✓ | | |
-| Siapkan, kirim, terima kembali (scan) | ✓ | ✓ | |
+| Siapkan (scan), kirim, terima kembali (checklist) | ✓ | ✓ | |
 | Inventaris, daftar unit, cetak QR | ✓ | ✓ | |
 | Laporan, kelola pengguna, cadangan | ✓ | | |
-| Lihat event, konfirmasi terima/kembali, lapor alat | ✓ | ✓ | ✓ |
+| Lihat event, tekan terima/kembali, lapor alat | ✓ | ✓ | ✓ |
 
 ## Pemasangan (project Firebase milik perusahaan)
 Gunakan project Firebase atas nama akun perusahaan (bukan akun pribadi), dengan paket **Blaze** (Cloud Functions mewajibkannya; pemakaian kecil biasanya tetap hampir gratis).
@@ -50,7 +50,7 @@ npm run build
 Kamera/scan QR butuh HTTPS (atau `localhost`).
 
 ## Pemindai QR (cepat, dari SIS)
-Semua scan (menyiapkan, menerima kembali, cek unit, daftar unit) memakai `src/QrCamera.jsx`:
+Semua scan (menyiapkan, cek unit, daftar unit) memakai `src/QrCamera.jsx`:
 - Kamera dibuka langsung dan dibaca tiap frame video; hanya bingkai tengah (±70%) yang dibaca.
 - Decoder berurutan: BarcodeDetector bawaan browser (Android/Chrome) -> ZXing WebAssembly (`barcode-detector`, untuk iPhone/Safari) -> `jsqr`.
 - Fokus kontinu, ketuk layar untuk fokus ulang, zoom (cubit/tombol/slider), beep dua nada + getar.

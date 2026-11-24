@@ -22,13 +22,13 @@ export const TIPE = {
 // siap     : gudang menekan "Sudah disiapkan" (penyiapan dikunci)
 // dikirim  : gudang menekan "PDF Kirim ke teknisi"
 // diterima : teknisi menekan "Alat lengkap diterima"
-// kembali  : teknisi menekan "Kembalikan ke gudang" (menunggu gudang scan)
-// selesai  : gudang selesai scan barang kembali, unit masuk stok
+// kembali  : teknisi menekan "Kembalikan ke gudang" (menunggu gudang mengecek)
+// selesai  : gudang mencentang barang kembali (tanpa scan), unit masuk stok
 export const TAHAP = {
   rencana:  { label: 'Gudang menyiapkan',        cls: 'dialokasikan' },
   siap:     { label: 'Sudah disiapkan',          cls: 'disiapkan' },
   dikirim:  { label: 'Dikirim, tunggu teknisi',  cls: 'keluar' },
   diterima: { label: 'Diterima teknisi',         cls: 'digunakan' },
-  kembali:  { label: 'Dikembalikan, tunggu scan', cls: 'menunggu_kembali' },
+  kembali:  { label: 'Dikembalikan, tunggu dicek gudang', cls: 'menunggu_kembali' },
   selesai:  { label: 'Selesai',                  cls: 'tersedia' },
 };

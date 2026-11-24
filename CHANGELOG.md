@@ -7,3 +7,5 @@
 **Kualitas**: CI (rules + test + build), 9 unit test, build APK hanya manual.
 
 **Pemindai**: html5-qrcode diganti mesin scan SIS (`QrCamera.jsx`: decoder native/ZXing WASM/jsQR, baca area bingkai per frame, jeda tanpa mematikan kamera, beep dua nada). Dihapus: `CameraZoom.jsx` dan pemilih ukuran kotak scan.
+
+**Alur pengembalian**: gudang menerima barang kembali dengan checklist (tanpa scan; centang semua, tandai rusak + catatan). Teknisi tidak lagi wajib mencentang unit sebelum menekan *Alat lengkap diterima*. Node `checklist` dihapus dari rules.

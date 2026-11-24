@@ -38,11 +38,9 @@ export default function EventDetail() {
   const raw = useVal('events/' + id);
   const assets = useVal('assets');
   const serah = useVal('serahTerima/' + id);
-  const cl = useVal('checklist/' + id);
   const users = useVal(isAdmin ? 'users' : 'users/' + profile.uid);
-  const [mode, setMode] = useState('');            // '' | 'siapkan1' | 'siapkan2' | 'kembali'
-  const [rusak, setRusak] = useState(false);
-  const [catatan, setCatatan] = useState('');
+  const [mode, setMode] = useState('');            // '' | 'siapkan1' | 'siapkan2'
+  const [ret, setRet] = useState({});             // checklist gudang saat barang kembali: { [unitId]: { ok, rusak, catatan } }
   const [need, setNeed] = useState({ kategori: '', jumlah: 1 });
   const [msg, setMsg] = useState('');
   const [ok, setOk] = useState('');
@@ -75,8 +73,7 @@ export default function EventDetail() {
   const isTek = !!ev.teknisi?.[profile.uid];
   const canTek = isTek || isAdmin;               // aksi teknisi (admin boleh menggantikan)
   const canEditKb = isGudang && tahap === 'rencana';
-  const checked = (a) => !!cl?.[a.id]?.ok;
-  const allChecked = sent.length > 0 && sent.every(checked);
+  const nRet = masihDiTeknisi.filter((a) => ret[a.id]?.ok).length;
 
   // konfirmasi ketuk dua kali (confirm() bawaan browser sering diblokir di HP)
   const tap = (key, fn) => () => { if (conf === key) { setConf(''); fn(); } else { setConf(key); setMsg(''); setOk(''); } };
@@ -98,9 +95,6 @@ export default function EventDetail() {
       if (tahap !== 'rencana' || sg['g' + g]) throw new Error(`Penyiapan Gudang ${g} sudah ditutup.`);
       if (gudangOf(a.kategori) !== g && !isAdmin) throw new Error(`${a.kode} milik Gudang ${gudangOf(a.kategori)}. Scan oleh petugas Gudang ${gudangOf(a.kategori)}.`);
       if (norm(a.status) !== 'tersedia') throw new Error(`${a.kode} tidak bisa disiapkan: status “${norm(a.status)}”${a.eventId && a.eventId !== id ? ' (dipakai event lain)' : a.eventId === id ? ' (sudah di event ini)' : ''}.`);
-    } else if (mode === 'kembali') {
-      if (tahap !== 'kembali') throw new Error('Teknisi belum menekan “Kembalikan ke gudang”.');
-      if (norm(a.status) !== 'keluar' || a.eventId !== id) throw new Error(`${a.kode} tidak sedang dikirim untuk event ini.`);
     } else throw new Error('Pilih Scan Gudang dulu.');
     return { title: a.nama || a.kode, sub: `${a.kode} · ${a.kategori || '-'} · Gudang ${gudangOf(a.kategori)}`, data: a };
   }
@@ -110,11 +104,6 @@ export default function EventDetail() {
     if (mode.startsWith('siapkan')) {
       await siapkan(a, ev, profile);
       setOk(`✓ ${a.kode} ${a.nama} siap (Gudang ${gudangOf(a.kategori)}).`);
-    } else if (mode === 'kembali') {
-      await terimaKembali(a, ev, profile, { rusak, catatan });
-      setOk(`✓ ${a.kode} ${a.nama} kembali ke stok${rusak ? ' (rusak, dicatat ke laporan)' : ''}. Simpan di Gudang ${gudangOf(a.kategori)}.`);
-      setRusak(false); setCatatan('');
-      if (masihDiTeknisi.length === 1) { await selesaikanEvent(ev, profile); setMode(''); }
     }
   }
 
@@ -148,13 +137,28 @@ export default function EventDetail() {
   const doUlangPdf = () => run(() => bagikanPdf(buatPdf(sent, ev.dikirimWaktu, ev.dikirimOleh), pdfName, 'Alat ' + ev.nama));
 
   // ---- teknisi ----
-  const toggle = (a, v) => run(() => set(ref(db, `checklist/${id}/${a.id}`), { ok: v, uid: profile.uid, nama: profile.nama, waktu: Date.now() }));
   const doTerima = () => run(async () => {
     await terimaTeknisi(ev, sent.length, profile);
   }, 'Alat lengkap diterima. Selamat bertugas.');
   const doKembalikan = () => run(async () => {
     await kembalikanKeGudang(ev, profile);
-  }, 'Sudah dikembalikan. Gudang akan scan barang kembali.');
+  }, 'Sudah dikembalikan. Gudang akan mengecek barang yang kembali.');
+
+  // ---- gudang: terima barang kembali lewat checklist (tanpa scan) ----
+  const setR = (a, patch) => setRet((x) => ({ ...x, [a.id]: { ...(x[a.id] || {}), ...patch } }));
+  const doTerimaKembali = () => run(async () => {
+    const pilih = masihDiTeknisi.filter((a) => ret[a.id]?.ok);
+    const tanpaCatatan = pilih.find((a) => ret[a.id].rusak && !(ret[a.id].catatan || '').trim());
+    if (tanpaCatatan) throw new Error(`Isi catatan kerusakan untuk ${tanpaCatatan.kode}.`);
+    const gagal = [];
+    for (const a of pilih) {
+      try { await terimaKembali(a, ev, profile, { rusak: !!ret[a.id].rusak, catatan: ret[a.id].catatan || '' }); }
+      catch (e) { gagal.push(e.message); }
+    }
+    setRet({});
+    if (gagal.length) throw new Error(gagal.join(' '));
+    if (pilih.length === masihDiTeknisi.length) await selesaikanEvent(ev, profile);
+  }, 'Alat diterima kembali ke stok.');
 
   // ---- kabel / barang tanpa barcode (manual, gudang) ----
   const addNeed = (e) => { e.preventDefault(); run(async () => {
@@ -174,7 +178,7 @@ export default function EventDetail() {
     ['Gudang menyiapkan & kirim PDF ke teknisi', at >= 2, ev.dikirimWaktu ? `${ev.dikirimOleh || ''} · ${fmt(ev.dikirimWaktu)}` : at === 1 ? 'Sudah disiapkan, tinggal kirim PDF' : at === 0 ? `Gudang 1: ${sg.g1 ? 'selesai' : 'belum'} · Gudang 2: ${sg.g2 ? 'selesai' : 'belum'}` : ''],
     ['Teknisi: alat lengkap diterima', at >= 3, ev.diterimaWaktu ? `${ev.diterimaOleh || ''} · ${fmt(ev.diterimaWaktu)}` : ''],
     ['Teknisi: kembalikan ke gudang', at >= 4, ev.kembaliWaktu ? `${ev.kembaliOleh || ''} · ${fmt(ev.kembaliWaktu)}` : ''],
-    ['Gudang: scan barang kembali, masuk stok', at >= 5, ev.selesaiWaktu ? fmt(ev.selesaiWaktu) : at === 4 ? `${masihDiTeknisi.length} unit belum di-scan` : ''],
+    ['Gudang: centang barang kembali, masuk stok', at >= 5, ev.selesaiWaktu ? fmt(ev.selesaiWaktu) : at === 4 ? `${masihDiTeknisi.length} unit belum dicentang` : ''],
   ];
   const nowIdx = steps.findIndex((s) => !s[1]);
 
@@ -233,15 +237,30 @@ export default function EventDetail() {
             {tahap === 'diterima' && <div className="act"><p><b>Alat sedang bersama teknisi.</b> Menunggu teknisi menekan “Kembalikan ke gudang”.</p></div>}
             {tahap === 'kembali' && (
               <div className="act">
-                <p><b>Teknisi sudah mengembalikan.</b> Scan setiap alat yang kembali ({masihDiTeknisi.length} belum di-scan; Gudang 1: {masihDiTeknisi.filter((a) => gudangOf(a.kategori) === 1).length}, Gudang 2: {masihDiTeknisi.filter((a) => gudangOf(a.kategori) === 2).length}).</p>
-                {masihDiTeknisi.length > 0 && <button className={'big' + (mode === 'kembali' ? ' dark' : '')} onClick={() => { unlockBeep(); setMode(mode === 'kembali' ? '' : 'kembali'); }}>{mode === 'kembali' ? 'Selesai scan' : 'Scan barang kembali'}</button>}
-                {mode === 'kembali' && (
+                <p><b>Teknisi sudah mengembalikan.</b> Cek fisik alatnya, lalu centang yang sudah diterima ({masihDiTeknisi.length} belum diterima; Gudang 1: {masihDiTeknisi.filter((a) => gudangOf(a.kategori) === 1).length}, Gudang 2: {masihDiTeknisi.filter((a) => gudangOf(a.kategori) === 2).length}). Tidak perlu scan.</p>
+                {masihDiTeknisi.length > 0 && (
                   <>
-                    <div className="card row">
-                      <label><input type="checkbox" checked={rusak} onChange={(e) => setRusak(e.target.checked)} /> Alat berikutnya rusak</label>
-                      {rusak && <input aria-label="Catatan kerusakan" placeholder="Catatan kerusakan" value={catatan} onChange={(e) => setCatatan(e.target.value)} style={{ flex: 1 }} />}
+                    <div className="row">
+                      <button type="button" className="ghost" disabled={busy} onClick={() => setRet(Object.fromEntries(masihDiTeknisi.map((a) => [a.id, { ...(ret[a.id] || {}), ok: true }])))}>Centang semua</button>
+                      <button type="button" className="ghost" disabled={busy} onClick={() => setRet({})}>Kosongkan</button>
                     </div>
-                    <Scanner check={cekScan} onConfirm={prosesScan} />
+                    <div className="tbl"><table><thead><tr><th>Kembali</th><th>Unit</th><th>Nama</th><th>Rusak?</th></tr></thead>
+                      <tbody>{masihDiTeknisi.map((u) => {
+                        const r = ret[u.id] || {};
+                        return (
+                          <tr key={u.id}>
+                            <td><input type="checkbox" aria-label={'Terima kembali ' + u.kode} disabled={busy} checked={!!r.ok} onChange={(e) => setR(u, { ok: e.target.checked, ...(e.target.checked ? {} : { rusak: false }) })} /></td>
+                            <td><Link to={'/aset/' + u.id}>{u.kode}</Link></td>
+                            <td>{u.nama}{gudangOf(u.kategori) === 2 && <small> · Gudang 2</small>}</td>
+                            <td>
+                              <label><input type="checkbox" disabled={busy} checked={!!r.rusak} onChange={(e) => setR(u, { rusak: e.target.checked, ...(e.target.checked ? { ok: true } : {}) })} /> Rusak</label>
+                              {r.rusak && <input aria-label={'Catatan kerusakan ' + u.kode} placeholder="Catatan kerusakan" value={r.catatan || ''} onChange={(e) => setR(u, { catatan: e.target.value })} />}
+                            </td>
+                          </tr>
+                        );
+                      })}</tbody></table></div>
+                    <button className={'big' + (conf === 'terimaKembali' ? ' dark' : '')} disabled={busy || nRet === 0} onClick={tap('terimaKembali', doTerimaKembali)}>{lbl('terimaKembali', `Terima ${nRet} alat ke stok`)}</button>
+                    {nRet < masihDiTeknisi.length && nRet > 0 && <p><small>{masihDiTeknisi.length - nRet} alat belum dicentang akan tetap berstatus “Di teknisi” dan event belum selesai.</small></p>}
                   </>
                 )}
                 {masihDiTeknisi.length === 0 && <button disabled={busy} onClick={() => run(() => selesaikanEvent(ev, profile), 'Event selesai.')}>Tandai event selesai</button>}
@@ -253,9 +272,8 @@ export default function EventDetail() {
         {/* ===== Aksi teknisi ===== */}
         {canTek && tahap === 'dikirim' && (
           <div className="act">
-            <p><b>Cek alat yang dikirim gudang</b> (centang tiap unit di daftar bawah), lalu terima.</p>
-            <button className={'big' + (conf === 'terima' ? ' dark' : '')} disabled={busy || !allChecked} onClick={tap('terima', doTerima)}>{lbl('terima', `Alat lengkap diterima (${sent.filter(checked).length}/${sent.length})`)}</button>
-            {!allChecked && <p><small>Tombol aktif setelah semua unit dicentang. Ada yang kurang? Hubungi gudang.</small></p>}
+            <p><b>Periksa alat yang dikirim gudang</b> sesuai daftar di bawah. Jika lengkap, tekan terima. Ada yang kurang atau rusak? Tekan “Lapor” pada unitnya, atau hubungi gudang.</p>
+            <button className={'big' + (conf === 'terima' ? ' dark' : '')} disabled={busy} onClick={tap('terima', doTerima)}>{lbl('terima', `Alat lengkap diterima (${sent.length} unit)`)}</button>
           </div>
         )}
         {canTek && tahap === 'diterima' && (
@@ -265,7 +283,7 @@ export default function EventDetail() {
           </div>
         )}
         {!isGudang && isTek && ['rencana', 'siap'].includes(tahap) && <div className="act"><p><b>Gudang sedang menyiapkan alat.</b> Daftar lengkap muncul setelah PDF dikirim.</p></div>}
-        {!isGudang && isTek && tahap === 'kembali' && <div className="act"><p><b>Menunggu gudang</b> scan barang kembali.</p></div>}
+        {!isGudang && isTek && tahap === 'kembali' && <div className="act"><p><b>Menunggu gudang</b> mengecek barang yang kembali.</p></div>}
 
         <div className="card">
           <b>Teknisi bertugas</b>
@@ -321,11 +339,10 @@ export default function EventDetail() {
         {sent.length > 0 && (
           <>
             <h2>Alat yang dikirim ke teknisi ({sent.length})</h2>
-            <div className="tbl"><table><thead><tr><th>Unit</th><th>Nama</th><th>Kategori</th><th>Status</th>{canTek && tahap === 'dikirim' && <th>Dicek</th>}{canTek && ['dikirim', 'diterima', 'kembali'].includes(tahap) && <th>Lapor</th>}</tr></thead>
+            <div className="tbl"><table><thead><tr><th>Unit</th><th>Nama</th><th>Kategori</th><th>Status</th>{canTek && ['dikirim', 'diterima', 'kembali'].includes(tahap) && <th>Lapor</th>}</tr></thead>
               <tbody>{sent.map((u) => (
                 <tr key={u.id}><td><Link to={'/aset/' + u.id}>{u.kode}</Link></td><td>{u.nama}</td><td>{u.kategori || '-'}{gudangOf(u.kategori) === 2 && <small> · Gudang 2</small>}</td>
                   <td>{u.status === 'keluar' && u.eventId === id ? <Badge s="keluar" /> : <><Badge s={u.status} /> <small>kembali</small></>}</td>
-                  {canTek && tahap === 'dikirim' && <td><input type="checkbox" aria-label={'Cek ' + u.kode} disabled={busy} checked={checked(u)} onChange={(e) => toggle(u, e.target.checked)} /></td>}
                   {canTek && ['dikirim', 'diterima', 'kembali'].includes(tahap) && <td><button className="ghost" onClick={() => { setLap(u); setLapJenis('cek'); setLapTeks(''); setMsg(''); setOk(''); }}>Lapor</button></td>}</tr>
               ))}</tbody></table></div>
             {lap && (

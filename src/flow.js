@@ -1,5 +1,5 @@
 // Alur 5 langkah: admin buat event -> gudang siapkan (scan) + "Sudah disiapkan" + PDF kirim
-// -> teknisi "Alat lengkap diterima" -> teknisi "Kembalikan ke gudang" -> gudang scan kembali -> stok
+// -> teknisi "Alat lengkap diterima" -> teknisi "Kembalikan ke gudang" -> gudang centang kembali (tanpa scan) -> stok
 import { ref, push, set, update, runTransaction } from 'firebase/database';
 import { db } from './firebase.js';
 import { audit } from './util.js';
@@ -63,7 +63,7 @@ export async function kirim(units, ev, profile, items = {}) {
   return { ok, gagal };
 }
 
-// 3) Gudang scan saat alat kembali: baik -> tersedia, rusak -> servis (masuk laporan kerusakan)
+// 3) Gudang menerima alat kembali (checklist, tanpa scan): baik -> tersedia, rusak -> servis (masuk laporan kerusakan)
 export async function terimaKembali(a, ev, profile, { rusak = false, catatan = '' } = {}) {
   await ubah(a, ['keluar'], rusak ? 'servis' : 'tersedia', null);
   await catat(a, rusak ? 'rusak' : 'masuk', profile, { eventId: ev.id, kondisi: rusak ? 'rusak' : 'baik', ...(catatan.trim() ? { catatan: catatan.trim() } : {}) });
@@ -165,7 +165,7 @@ export async function kembalikanKeGudang(ev, profile) {
     [`serahTerima/${ev.id}/${key}`]: { tipe: 'kembali', uid: profile.uid, nama: profile.nama, waktu: Date.now() },
   });
   audit(profile.uid, 'teknisi_kembalikan', ev.nama).catch(() => {});
-  notifRole(profile, 'warehouse', 'Alat dikembalikan: ' + ev.nama, `${profile.nama} mengembalikan alat. Scan di gudang untuk menerima.`, ev.id);
+  notifRole(profile, 'warehouse', 'Alat dikembalikan: ' + ev.nama, `${profile.nama} mengembalikan alat. Cek dan centang di gudang untuk menerima.`, ev.id);
   notifRole(profile, 'admin', 'Alat dikembalikan: ' + ev.nama, `${profile.nama} mengembalikan alat ke gudang.`, ev.id);
 }
 
